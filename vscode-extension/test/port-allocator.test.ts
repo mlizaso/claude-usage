@@ -134,4 +134,28 @@ describe("resolveStablePort", () => {
     const got = await resolveStablePort(0, 80);
     expect(got).toBeGreaterThan(1024);
   });
+
+  // The 80 case above is over-determined on POSIX and cannot fail there: an
+  // unprivileged isPortFree(80) answers false with EACCES, so it still passes
+  // with normalizeConfiguredPort(saved) removed — and ubuntu-latest is the only
+  // platform extension CI runs on. The three below are what actually pin the two
+  // normalize calls, because Node rejects an out-of-range port itself
+  // (ERR_SOCKET_BAD_PORT, thrown synchronously out of listen) rather than letting
+  // the OS absorb it into a false. Keep all four: none is redundant, and if
+  // isPortFree ever wraps listen in a try/catch that resolves false, these go
+  // inert again and the coverage has to be rebuilt some other way.
+  it("ignores a saved port above the range", async () => {
+    const got = await resolveStablePort(0, 65536);
+    expect(got).toBeGreaterThan(1024);
+  });
+
+  it("ignores a negative saved port", async () => {
+    const got = await resolveStablePort(0, -1);
+    expect(got).toBeGreaterThan(1024);
+  });
+
+  it("ignores an out-of-range configured port and falls through to saved", async () => {
+    const saved = await pickFreePort();
+    expect(await resolveStablePort(65536, saved)).toBe(saved);
+  });
 });

@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 
 from scanner import get_db, init_db, parse_jsonl_file, scan
+from tests.legacy_database import create_schema as create_legacy_schema
 
 NL = chr(10)  # avoid backslash-escaped newline literals in source
 
@@ -63,37 +64,37 @@ class TestSubagentDetection(unittest.TestCase):
     def _write(self, relpath, lines):
         path = os.path.join(self.tmpdir, relpath)
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write(NL.join(lines) + NL)
         return path
 
     def test_sidechain_flag_marks_subagent(self):
         path = self._write("a.jsonl", [_assistant(extra={"isSidechain": True})])
-        _, turns, _, _ = parse_jsonl_file(path)
+        _, turns, _, _, _ = parse_jsonl_file(path)
         self.assertEqual(turns[0]["is_subagent"], 1)
 
     def test_agent_id_marks_subagent_and_is_captured(self):
         path = self._write("a.jsonl", [_assistant(extra={"agentId": "agent-xyz"})])
-        _, turns, _, _ = parse_jsonl_file(path)
+        _, turns, _, _, _ = parse_jsonl_file(path)
         self.assertEqual(turns[0]["is_subagent"], 1)
         self.assertEqual(turns[0]["agent_id"], "agent-xyz")
 
     def test_path_under_subagents_marks_subagent(self):
         path = self._write(os.path.join("proj", "subagents", "x.jsonl"),
                            [_assistant()])
-        _, turns, _, _ = parse_jsonl_file(path)
+        _, turns, _, _, _ = parse_jsonl_file(path)
         self.assertEqual(turns[0]["is_subagent"], 1)
 
     def test_normal_record_not_subagent(self):
         path = self._write("a.jsonl", [_assistant()])
-        _, turns, _, _ = parse_jsonl_file(path)
+        _, turns, _, _, _ = parse_jsonl_file(path)
         self.assertEqual(turns[0]["is_subagent"], 0)
         self.assertIsNone(turns[0]["agent_id"])
 
     def test_agent_dispatch_extracted_from_tool_result(self):
         path = self._write("a.jsonl", [_dispatch(agent_id="agent-xyz", agent_type="Plan",
                                                   total_tokens=1234)])
-        _, _, agents, _ = parse_jsonl_file(path)
+        _, _, agents, _, _ = parse_jsonl_file(path)
         self.assertEqual(len(agents), 1)
         self.assertEqual(agents[0]["agent_id"], "agent-xyz")
         self.assertEqual(agents[0]["agent_type"], "Plan")
@@ -103,8 +104,19 @@ class TestSubagentDetection(unittest.TestCase):
         rec = json.dumps({"type": "user", "sessionId": "s1",
                           "toolUseResult": {"status": "ok"}})
         path = self._write("a.jsonl", [rec])
-        _, _, agents, _ = parse_jsonl_file(path)
+        _, _, agents, _, _ = parse_jsonl_file(path)
         self.assertEqual(agents, [])
+
+    def test_agent_numeric_metadata_rejects_html_strings(self):
+        record = json.loads(_dispatch(agent_id="agent-xyz", agent_type="Plan"))
+        record["toolUseResult"]["totalDurationMs"] = "<img src=x onerror=alert(1)>"
+        record["toolUseResult"]["totalToolUseCount"] = "7"
+        path = self._write("a.jsonl", [json.dumps(record)])
+
+        _, _, agents, _, _ = parse_jsonl_file(path)
+
+        self.assertIsNone(agents[0]["total_duration_ms"])
+        self.assertIsNone(agents[0]["tool_use_count"])
 
 
 class TestSubagentScanIntegration(unittest.TestCase):
@@ -117,14 +129,14 @@ class TestSubagentScanIntegration(unittest.TestCase):
     def test_scan_populates_agents_and_flags(self):
         parent = self.projects_dir / "user" / "proj"
         parent.mkdir(parents=True)
-        with open(parent / "sess-1.jsonl", "w") as f:
+        with open(parent / "sess-1.jsonl", "w", encoding="utf-8") as f:
             f.write(_assistant(session_id="sess-1", message_id="m-main",
                                input_tokens=100, output_tokens=50) + NL)
             f.write(_dispatch(session_id="sess-1", agent_id="agent-1",
                               agent_type="Explore", total_tokens=999) + NL)
         sub = parent / "subagents"
         sub.mkdir()
-        with open(sub / "agent-1.jsonl", "w") as f:
+        with open(sub / "agent-1.jsonl", "w", encoding="utf-8") as f:
             f.write(_assistant(session_id="sess-1", message_id="m-sub",
                                input_tokens=300, output_tokens=80,
                                extra={"agentId": "agent-1"}) + NL)
@@ -146,16 +158,9 @@ class TestSubagentScanIntegration(unittest.TestCase):
         self.assertEqual(main_turn["is_subagent"], 0)
         conn.close()
 
-    def test_migration_adds_subagent_columns_and_agents_table(self):
+    def test_rebuild_adds_subagent_columns_and_agents_table(self):
         conn = sqlite3.connect(self.db_path)
-        conn.executescript(
-            "CREATE TABLE turns ("
-            " id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, timestamp TEXT,"
-            " model TEXT, input_tokens INTEGER, output_tokens INTEGER,"
-            " cache_read_tokens INTEGER, cache_creation_tokens INTEGER,"
-            " tool_name TEXT, cwd TEXT, message_id TEXT);"
-        )
-        conn.commit()
+        create_legacy_schema(conn)
         conn.close()
 
         conn = get_db(self.db_path)

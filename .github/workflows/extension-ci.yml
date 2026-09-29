@@ -1,16 +1,40 @@
 name: VS Code extension tests
 
+# The path filter must cover everything copy-python.js bundles into the .vsix,
+# or a change can ship to users without this workflow ever running. It listed
+# cli.py / dashboard.py / scanner.py, which was complete before the module split
+# — afterwards 18 of the 23 bundled files were invisible to it, including every
+# file under web/ and all seven extracted Python modules.
+#
+# The qualified runtime package is covered as a directory. `*.py` remains for
+# the checkout launchers and Docker-only proxy at the root; `*` does not cross
+# a `/`. The marketplace README is canonical under `docs/` and reached through
+# a symlink, so its target must be named too: changing a symlink target does not
+# change the symlink path.
 on:
   push:
-    branches: [main, DEV]
+    branches: [main]
     paths:
       - "vscode-extension/**"
+      - "docs/VS-CODE-EXTENSION.md"
+      - "*.py"
+      - "claude_usage/**"
+      - "web/**"
+      - "vendor/**"
       - ".github/workflows/extension-ci.yml"
   pull_request:
     branches: [main]
     paths:
       - "vscode-extension/**"
+      - "docs/VS-CODE-EXTENSION.md"
+      - "*.py"
+      - "claude_usage/**"
+      - "web/**"
+      - "vendor/**"
       - ".github/workflows/extension-ci.yml"
+
+permissions:
+  contents: read
 
 jobs:
   build-test:
@@ -20,18 +44,37 @@ jobs:
         working-directory: vscode-extension
 
     steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: "20"
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.18.0"
           cache: "npm"
           cache-dependency-path: vscode-extension/package-lock.json
 
-      - run: npm ci
+      # Vitest's platform-specific Rolldown binding is an optional dependency,
+      # so the test job must install optionals. Lifecycle scripts remain off.
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Verify dependency signatures and advisories
+        run: |
+          npm audit signatures
+          npm audit --ignore-scripts --audit-level=low
 
       - name: Type-check
-        run: npx tsc -p . --noEmit
+        run: npm run compile -- --noEmit
+
+      # The step above is src-only by necessity: `tsconfig.json` emits, and
+      # `rootDir: "src"` is what puts `out/extension.js` where package.json's
+      # `main` points. Vitest strips types without checking them, so with only
+      # those two gates a test written against a wrong API shape compiles, runs
+      # and passes. `test/tsconfig.json` is the non-emitting project that
+      # covers the test sources; a gate that is never invoked has exactly the
+      # coverage of no gate.
+      - name: Type-check tests
+        run: npm run typecheck:test
 
       - name: Run tests
         run: npm test
@@ -39,8 +82,20 @@ jobs:
       - name: Package .vsix
         run: npm run package
 
+      # Only publish the artifact for branches in THIS repository. `npm run
+      # package` executes repository-controlled code from the branch under test
+      # (`vscode:prepublish` runs clean-build.js, copy-python.js and tsc), so on
+      # a fork's pull request this step would host a build of that fork's code
+      # under this repository's namespace, downloadable by any authenticated
+      # GitHub user for 14 days. Nothing is granted on the repo itself -- the
+      # token is read-only, `persist-credentials: false`, no secrets are in
+      # scope -- but a URL under the maintainer's name is a distribution
+      # channel, and "here is the build of my PR, try it" is a social-engineering
+      # path rather than a technical one. The build itself still runs on every
+      # PR, which is the part that has review value; only the hosting is gated.
       - name: Upload .vsix artifact
-        uses: actions/upload-artifact@v5
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: claude-usage-extension-vsix
           path: vscode-extension/*.vsix

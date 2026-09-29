@@ -40,7 +40,7 @@ export function renderHtml(
 </style>
 </head>
 <body>
-<iframe src="${escapeHtml(url)}" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"></iframe>
+<iframe src="${escapeHtml(url)}" sandbox="allow-scripts allow-same-origin allow-downloads"></iframe>
 </body>
 </html>`;
   }
@@ -94,6 +94,13 @@ export function escapeHtml(s: string): string {
  * Generate a one-shot nonce for the CSP script-src directive.
  * 24 bytes of crypto-random output, base64url-encoded (URL-safe, no
  * padding, always 32 chars).
+ *
+ * Defence in depth today: neither pane emits a `<script>` element, so the
+ * directive this nonce feeds currently authorises nothing. Keep the CSPRNG
+ * anyway — the day a pane grows a script is not the day to discover the nonce
+ * was guessable, and no property of the string itself would reveal that
+ * (32 chars of `Math.random()` over the base64url alphabet look identical),
+ * which is why sidebar.test.ts asserts the *source* rather than the output.
  */
 export function makeNonce(): string {
   return randomBytes(24).toString("base64url");
@@ -123,7 +130,13 @@ export class DashboardSidebar implements vscode.WebviewViewProvider {
     // enableCommandUris lets the status pane's "Retry" link invoke
     // claudeUsage.open via a command: URI. The pane renders only our own
     // trusted HTML (statusText is escaped), so allowing command URIs is safe.
-    view.webview.options = { enableScripts: true, enableCommandUris: true };
+    view.webview.options = {
+      enableScripts: true,
+      enableCommandUris: ["claudeUsage.open"],
+      localResourceRoots: this.extensionUri
+        ? [vscode.Uri.joinPath(this.extensionUri, "resources")]
+        : [],
+    };
     // Resolve a webview-safe URI for the bundled icon so the status pane shows
     // the same logo as the dashboard header. Guarded so node-only tests (whose
     // fake view has no asWebviewUri / no vscode.Uri) don't blow up.
@@ -135,7 +148,7 @@ export class DashboardSidebar implements vscode.WebviewViewProvider {
     }
     this.render();
     view.onDidDispose(() => {
-      this.view = undefined;
+      if (this.view === view) this.view = undefined;
     });
     // Kick the host to start the server now that the user has revealed the
     // panel. extension.ts wires this to openDashboard(); the in-flight
@@ -151,6 +164,7 @@ export class DashboardSidebar implements vscode.WebviewViewProvider {
 
   /** Non-error status (initial / "starting…"): no Retry button. */
   setStatus(text: string): void {
+    this.currentUrl = null;
     this.statusText = text;
     this.failed = false;
     this.render();
@@ -158,6 +172,7 @@ export class DashboardSidebar implements vscode.WebviewViewProvider {
 
   /** A start attempt failed: show the status plus a Retry button. */
   setError(text: string): void {
+    this.currentUrl = null;
     this.statusText = text;
     this.failed = true;
     this.render();

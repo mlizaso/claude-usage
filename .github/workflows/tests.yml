@@ -6,20 +6,97 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Windows and macOS are in the matrix because Windows support was true only
+    # BY CONSTRUCTION — every path goes through Path.home(), and the four
+    # platform-specific branches are os.name guards that no-op there — but was
+    # never actually executed on Windows. This repo has twice shipped something
+    # that was correct in principle and broken in fact, so the claim gets a run.
+    #
+    # It answered: on the first two runs macOS passed and Windows failed, in the
+    # test harness rather than in product code — every text read and every
+    # subprocess(text=True) under tests/ needs an explicit encoding= or Windows
+    # decodes it with the cp1252 codepage. See AGENTS.md. Do NOT paper over that
+    # with PYTHONUTF8 here: it would green the runner in one line while leaving
+    # every Windows user running the suite exactly as broken.
+    #
+    # Deliberately not a full 3x3 grid. Windows minutes bill at 2x and macOS at
+    # 10x, and the thing being checked on those two is that the code RUNS on
+    # them at all, which one interpreter answers as well as three. Python
+    # version coverage stays on Linux, where it is cheap.
+    runs-on: ${{ matrix.os }}
     strategy:
+      # One platform failing should not hide whether the others pass.
+      fail-fast: false
+      # require-browser is the leg's answer to "does a Chrome live here that
+      # tests/test_dashboard_js.py's _find_browser() will actually find?" — see
+      # the Run tests step. "" is not "we do not care"; it is a gap the run
+      # announces.
       matrix:
-        python-version: ["3.9", "3.11", "3.12"]
+        include:
+          - { os: ubuntu-latest,  python-version: "3.11", require-browser: "1" }
+          - { os: ubuntu-latest,  python-version: "3.12", require-browser: "1" }
+          - { os: ubuntu-latest,  python-version: "3.13", require-browser: "1" }
+          - { os: macos-latest,   python-version: "3.13", require-browser: "1" }
+          - { os: windows-latest, python-version: "3.13", require-browser: ""  }
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Announce a leg that does not enforce the browser tests
+        # A skipped guard reads as a pass, and that is the whole reason the flag
+        # below exists — so a leg that cannot set it says so in the run summary
+        # instead of leaving a green check that means less than it looks like.
+        if: matrix.require-browser != '1'
+        run: echo "::warning title=Rendered geometry is NOT enforced on ${{ matrix.os }}::CLAUDE_USAGE_REQUIRE_BROWSER is unset on this leg, so TestDailyPanelGeometryInABrowser may skip silently here. The Linux and macOS legs enforce it; this one does not."
+
       - name: Run tests
-        run: python -m unittest discover -s tests -v
+        # ubuntu-latest ships node, so tests/test_dashboard_js.py really does
+        # execute the dashboard's embedded JavaScript here. That suite skips
+        # itself when no JS engine is on PATH, which would let a runner image
+        # that dropped node report green while testing none of the JS — this
+        # flag turns that silent skip into a loud failure.
+        #
+        # CLAUDE_USAGE_REQUIRE_BROWSER is the same contract for the only tests
+        # that see pixels. Everything else runs under node against a DOM stub
+        # with no fonts, no boxes and no scrollbars, which is how a table
+        # rendering 146px outside its own column, a page-wide horizontal
+        # scrollbar and a pan track that could not reach the newest day all
+        # passed the suite. Only TestDailyPanelGeometryInABrowser can see that
+        # class of defect, and it has TWO silent-skip paths — no browser found,
+        # and a browser that produces no measurement — either of which leaves a
+        # green run that measured nothing. The flag turns both into failures.
+        #
+        # It is set wherever _find_browser() genuinely finds a browser unaided:
+        # ubuntu-24.04 symlinks /usr/bin/chromium at an unpacked Chromium (no
+        # snap) and /usr/bin/google-chrome at the deb, and macos-26-arm64 has
+        # /Applications/Google Chrome.app. windows-2025 ships Chrome too, but
+        # under no name on PATH that _find_browser() looks for — that alone is
+        # why the leg is left unenforced and warns about it above rather than
+        # being wired up here. It was ALSO red for an unrelated cp1252 reason
+        # when that decision was taken, which is why the two were kept from
+        # entangling; those harness reads have since been given explicit
+        # encodings, but no run has executed the suite on Windows since, so the
+        # leg's state is unverified rather than fixed. See AGENTS.md.
+        env:
+          CLAUDE_USAGE_REQUIRE_JS: "1"
+          CLAUDE_USAGE_REQUIRE_BROWSER: ${{ matrix.require-browser }}
+        # -t . is load-bearing, not tidiness: without it discovery sets
+        # top_level_dir to `tests` and imports every module under its BARE
+        # name, so `tests/__init__.py` -- which installs the guard that stops a
+        # test writing to the developer's real ~/.claude -- never runs. It
+        # survived only because 21 of the 58 modules happen to do
+        # `from tests.X import ...`. tests/test_real_data_guard_is_live.py
+        # fails the run if it is ever absent again.
+        run: python -m unittest discover -s tests -t . -v

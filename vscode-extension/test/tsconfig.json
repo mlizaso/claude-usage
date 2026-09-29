@@ -1,0 +1,29 @@
+// Type-checks the tests, which the emitting project cannot.
+//
+// `../tsconfig.json` must stay `include: ["src/**/*"]` with `rootDir: "src"`:
+// that is what makes `out/extension.js` land where package.json's `main`
+// points, and adding `test/**` to it would emit test JS into `out/`, which
+// `.vscodeignore` does not exclude — so test JavaScript would ship inside the
+// .vsix. Hence a second, non-emitting project rather than a wider include.
+// It lives in `test/` rather than as a root `tsconfig.test.json` because
+// `.vscodeignore` excludes `test/**` but names `tsconfig.json` literally, so a
+// root sibling would itself ship (verified with `vsce ls`).
+//
+// Both overrides below are load-bearing, and dropping either yields a check
+// that cannot report a real error:
+//   - `exclude` must be re-stated, because `extends` inherits
+//     ["node_modules", "out", "test"] and `exclude` filters `include` —
+//     inheriting it drops every test file straight back out of the program,
+//     leaving a step that exits 0 with four blatant type errors in the tree.
+//   - `rootDir` must be overridden, not omitted, because `extends` inherits
+//     "src" and every test file then reports TS6059 instead of its real
+//     diagnostics.
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".."
+  },
+  "include": ["../src/**/*", "**/*"],
+  "exclude": ["../node_modules", "../out"]
+}

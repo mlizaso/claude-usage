@@ -4,9 +4,14 @@ import * as net from "node:net";
  * Pick a free TCP port the OS hands us.
  *
  * We bind a server to port 0 on the given host, read back the OS-assigned
- * port, close the server, and return. Brief race window exists between close
- * and the server-manager's spawn, but that's the standard pattern and the
- * server-manager will retry on EADDRINUSE.
+ * port, close the server, and return. A brief race window remains between that
+ * close and the server-manager's spawn. Nothing retries it automatically —
+ * this comment used to say the server-manager did, and it never has:
+ * ServerManager.start() spawns exactly once and rejects with "server exited
+ * before becoming ready", leaving the child's "Address already in use" on the
+ * output channel. Recovery is human-gated — extension.ts's catch offers Retry,
+ * which re-enters doStartup and re-resolves through resolveStablePort, whose
+ * isPortFree re-check abandons the port that is now taken.
  */
 export function pickFreePort(host = "127.0.0.1"): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -65,7 +70,7 @@ export function isPortFree(port: number, host = "127.0.0.1"): Promise<boolean> {
  * Resolve a port that stays stable across launches when possible.
  *
  * The dashboard is embedded as an iframe at http://<host>:<port>/, and the
- * webview's localStorage (collapsed-section state, the update-check cache) is
+ * webview's localStorage (collapsed-section state) is
  * keyed by that origin — so a brand-new port on every launch silently wipes it.
  * When the port is auto-assigned (configured 0) we therefore reuse `saved` if
  * it's still free, only picking a fresh one when it isn't. A user-pinned port is

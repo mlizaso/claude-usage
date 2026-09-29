@@ -1,3 +1,9 @@
+// The emitting project, and deliberately src-only. `rootDir: "src"` +
+// `outDir: "out"` are what put `out/extension.js` where package.json's `main`
+// points, so widening `include` to cover `test/**` would either report TS6059
+// on every test file or emit test JS into `out/` — which `.vscodeignore` does
+// not exclude, so it would ship inside the .vsix. The tests are type-checked
+// by `test/tsconfig.json` (`npm run typecheck:test`) instead.
 {
   "compilerOptions": {
     "target": "ES2022",

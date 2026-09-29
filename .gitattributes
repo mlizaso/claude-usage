@@ -1,0 +1,18 @@
+# Keep LF in the working tree on every platform.
+#
+# Git for Windows defaults to core.autocrlf=true, which rewrites checked-out
+# files to CRLF. That would break this suite in ways that look like real
+# failures: tests/test_web_assets.py compares the assembled document against the
+# files on disk, tests/test_pricing_parity.py parses the JS pricing table out of
+# it with anchored regexes, and tests/test_dashboard_js.py concatenates the JS
+# parts and runs them under node. All of them compare text, and none of them
+# should have to care which platform checked it out.
+#
+# It also keeps the delivered bytes identical across platforms, which matters
+# because the dashboard is assembled from these files at import and served as
+# one document.
+* text=auto eol=lf
+
+# Binary, never touched.
+*.png binary
+*.svg text eol=lf

@@ -1,18 +1,19 @@
 {
-  "name": "claude-usage-phuryn",
-  "displayName": "Claude Code Usage by Paweł Huryn",
-  "description": "Embed your Claude Code usage dashboard (token counts, costs, sessions, projects) directly inside VS Code. Reads local JSONL transcripts, no API calls.",
-  "version": "1.5.5",
-  "publisher": "PawelHuryn",
+  "name": "claude-usage",
+  "private": true,
+  "displayName": "Claude Code and Codex Usage",
+  "description": "Explore local Claude Code and Codex tokens, costs and sessions, including logs collected from local Docker containers. No telemetry.",
+  "version": "1.7.0",
+  "publisher": "mlizaso",
   "author": {
     "name": "Paweł Huryn",
     "url": "https://www.productcompass.pm"
   },
   "license": "MIT",
-  "homepage": "https://github.com/phuryn/claude-usage",
+  "homepage": "https://github.com/mlizaso/claude-usage",
   "repository": {
     "type": "git",
-    "url": "https://github.com/phuryn/claude-usage"
+    "url": "https://github.com/mlizaso/claude-usage"
   },
   "engines": {
     "vscode": "^1.94.0"
@@ -28,10 +29,15 @@
     "tokens",
     "cost",
     "dashboard",
-    "anthropic"
+    "anthropic",
+    "codex",
+    "openai"
   ],
   "icon": "resources/icon.png",
   "main": "./out/extension.js",
+  "extensionKind": [
+    "ui"
+  ],
   "activationEvents": [],
   "contributes": {
     "viewsContainers": {
@@ -76,35 +82,40 @@
         "claudeUsage.pythonPath": {
           "type": "string",
           "default": "",
-          "description": "Path to a Python interpreter (>=3.8). Empty = auto-discover (claude-usage on PATH, then python3, then python)."
+          "scope": "machine",
+          "description": "Absolute path to a Python interpreter (>=3.11). Empty = auto-discover, in absolute PATH entries only: python3, then python (on Windows: python.exe, then python3.exe, then python). While this is set your PATH is not searched at all."
         },
         "claudeUsage.cliPath": {
           "type": "string",
           "default": "",
-          "description": "Path to a claude-usage clone's cli.py. Empty = auto-discover (Homebrew claude-usage shim, then this clone, then ~/.claude-usage)."
+          "scope": "machine",
+          "description": "Absolute path to an explicitly trusted custom Python launcher file, or to a directory containing cli.py. Empty = use the bundled source. If set but unusable, the extension warns and runs the bundled copy anyway — unlike claudeUsage.pythonPath, which stops rather than substituting. Workspace and PATH scripts are never auto-executed."
         },
         "claudeUsage.port": {
           "type": "number",
           "default": 0,
+          "scope": "machine",
           "description": "Bind port for the dashboard server. 0 = auto-pick a free port."
         }
       }
     }
   },
   "scripts": {
+    "clean": "node scripts/clean-build.js",
     "copy-python": "node scripts/copy-python.js",
-    "vscode:prepublish": "npm run copy-python && tsc -p .",
+    "vscode:prepublish": "npm run clean && npm run copy-python && tsc -p .",
     "compile": "tsc -p .",
     "watch": "tsc -p . -w",
+    "typecheck:test": "tsc -p test",
     "test": "vitest run",
     "test:watch": "vitest",
-    "package": "npx @vscode/vsce package --no-dependencies",
-    "publish": "npx @vscode/vsce publish --no-dependencies"
+    "package": "vsce package --no-dependencies"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "@types/vscode": "^1.94.0",
-    "typescript": "^5.4.0",
-    "vitest": "^1.6.0"
+    "@types/node": "20.19.43",
+    "@types/vscode": "1.94.0",
+    "@vscode/vsce": "3.9.2",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
   }
 }

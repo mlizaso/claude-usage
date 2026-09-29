@@ -8,7 +8,7 @@ node_modules/**
 out/**/*.map
 *.vsix
 tsconfig.json
-vitest.config.ts
+vitest.config.mts
 # Bigger source-of-truth icon kept in-repo for marketplace listing / refs;
 # the runtime extension only needs resources/icon.png.
 resources/icon_large.png
