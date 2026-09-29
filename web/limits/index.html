@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>Claude Usage Limits</title>
+  <style nonce="__CSP_NONCE__">__LIMITS_CSS__</style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <p class="eyebrow">Local quota monitor</p>
+        <h1>Claude Usage Limits</h1>
+      </div>
+      <p id="reading" class="reading" aria-live="polite">Connecting…</p>
+    </header>
+    <section id="notice" class="notice" aria-live="assertive" hidden></section>
+    <section id="windows" class="grid" aria-label="Quota windows"></section>
+    <section id="absent" aria-labelledby="absent-title" hidden>
+      <h2 id="absent-title">Configured but not currently reported</h2>
+      <p class="muted">These alerts stay configured even though the current reading no longer lists their windows.</p>
+      <div id="orphans" class="grid"></div>
+    </section>
+    <p id="empty" class="empty" hidden>No quota windows are available from Claude Code yet.</p>
+  </main>
+  <script nonce="__CSP_NONCE__">__LIMITS_JS__</script>
+</body>
+</html>
