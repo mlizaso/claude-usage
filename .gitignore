@@ -1,6 +1,58 @@
 __pycache__/
+*.py[cod]
+.DS_Store
+Thumbs.db
+Desktop.ini
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.p12
+*.pfx
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.jsonl
+*.log
+*.csv
+*.vsix
+dashboard-url
+dashboard-url.*
+limit-thresholds.json
+limit-thresholds.json.*
+.codex/
+.agents/
+.vscode/
+.idea/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 server.log
 logs/
+
+# Private startup snapshots when a custom usage database lives in the checkout.
+*.dashboard-sources.json
+*.dashboard-claude.json
+*.dashboard-codex.json
+.dashboard-snapshot-*
+
+# Private container transcript copies beside a custom in-checkout database.
+*.docker-transcripts/
+
+# Tool caches that land at the repository ROOT. vscode-extension/.gitignore
+# already covers the extension's own tree, but a vitest/vite run started from
+# here creates a bare `node_modules/.vite/` beside it, untracked and unignored
+# — the same `git add -A` hazard the `.claude/` note below describes.
+node_modules/
 
 # Python packaging build artifacts (uv build / pip / setuptools) — see pyproject.toml
 dist/
@@ -9,3 +61,6 @@ build/
 
 .pr-candidates.md
 /tmp/
+
+# Local coding-agent settings, credentials, transcripts and scratch files.
+.claude/
