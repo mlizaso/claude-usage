@@ -1,0 +1,699 @@
+
+  /* Dark is the default palette. --axis is a touch lighter than --muted so small
+     chart labels stay legible; the charts read these same variables at render
+     time (see syncChartColors) rather than keeping a hand-copied set. */
+  :root {
+    --bg: #161617;      /* page base */
+    --card: #1E1F20;    /* raised one step above the page */
+    --border: #2C2D2E;
+    --text: #BFBFBF;
+    --muted: #4F4F50;
+    --axis: #6F6F70;
+    --accent: #d97757;
+    --blue: #48A0C7;
+    --green: #74C991;
+    --red: #C74E39;
+    --purple: #9B7EC7;  /* effort tags; the same hue the chart series uses */
+    --raised: #2E2F31;  /* hover / raised surfaces — top of the elevation ladder */
+    --selected: #262626;  /* selected chips / tabs (neutral, not accent) */
+    --scroll-track: #121314;
+    --scroll-thumb: #28292B;
+    --scroll-thumb-hover: #8B8B8D;
+    --shadow: rgba(0,0,0,0.35);
+    --jump-h: 45px;  /* sticky jump-bar height; JS keeps it in sync for scroll offsets */
+  }
+
+  /* The light palette is written TWICE, on purpose.
+     The @media copy is what a reader who has expressed no preference gets, and
+     it applies with no JavaScript at all — so an OS-light reader never sees a
+     dark frame paint first. The attribute copy is the explicit choice, and it
+     has to win in BOTH directions (light on a dark OS, dark on a light one).
+     There is no CSS way to alias one custom-property group to another, so the
+     alternative to duplication is a flash of the wrong theme on every load. */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #F7F6F3;
+      --card: #FFFFFF;
+      --border: #E2DFD8;
+      --text: #2B2A27;
+      --muted: #6E6C66;
+      --axis: #6E6C66;
+      --accent: #AD522F;   /* darkened from #d97757, which is 3.0:1 on white */
+      --blue: #286F90;
+      --green: #357A50;
+      --red: #B03A26;
+      --purple: #7758A3;   /* darkened from #9B7EC7, which is 2.90:1 on its tint */
+      --raised: #EDEAE3;
+      --selected: #E4E0D7;
+      --scroll-track: #EFEDE7;
+      --scroll-thumb: #D2CEC4;
+      --scroll-thumb-hover: #A8A399;
+      --shadow: rgba(28,26,22,0.14);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #F7F6F3;
+    --card: #FFFFFF;
+    --border: #E2DFD8;
+    --text: #2B2A27;
+    --muted: #6E6C66;
+    --axis: #6E6C66;
+    --accent: #AD522F;
+    --blue: #286F90;
+    --green: #357A50;
+    --red: #B03A26;
+    --purple: #7758A3;
+    --raised: #EDEAE3;
+    --selected: #E4E0D7;
+    --scroll-track: #EFEDE7;
+    --scroll-thumb: #D2CEC4;
+    --scroll-thumb-hover: #A8A399;
+    --shadow: rgba(28,26,22,0.14);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; }
+
+  /* VS Code-style scrollbars. The dashboard renders inside a webview iframe,
+     which doesn't inherit VS Code's --vscode-* theme variables, so we set the
+     scrollbar here: no arrows, grey thumb (#28292B, #8B8B8D on hover) over a
+     #121314 track, in a 21px gutter. Also fits the dark UI standalone. */
+  * { scrollbar-width: auto; scrollbar-color: var(--scroll-thumb) var(--scroll-track); }
+  ::-webkit-scrollbar { width: 21px; height: 21px; }
+  ::-webkit-scrollbar-track { background: var(--scroll-track); }
+  ::-webkit-scrollbar-thumb { background-color: var(--scroll-thumb); border: 3px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background-color: var(--scroll-thumb-hover); }
+  ::-webkit-scrollbar-thumb:active { background-color: var(--scroll-thumb-hover); }
+  ::-webkit-scrollbar-corner { background: var(--scroll-track); }
+
+  header { background: var(--card); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 18px; font-weight: 600; color: var(--text); }
+  header .header-title { display: flex; align-items: center; gap: 10px; }
+  /* With both assistants present the title doubles as the source toggle, so it
+     has to look like something you can press. */
+  header h1.switchable { cursor: pointer; display: inline-flex; align-items: center; gap: 7px;
+                         padding: 2px 8px; margin: -2px -8px; border-radius: 7px;
+                         transition: background 0.12s, color 0.12s; }
+  header h1.switchable::after { content: "\21C4"; font-size: 13px; color: var(--muted); }
+  header h1.switchable:hover { background: var(--raised); }
+  header h1.switchable:hover::after { color: var(--accent); }
+  header h1.switchable:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* The icon is a monochrome silhouette (white shape on transparent). We paint
+     it with the title color via a CSS mask + background-color, so it matches
+     `header h1` — the lightest text color. */
+  header .header-icon {
+    width: 26px; height: 26px; flex-shrink: 0; display: block;
+    background-color: var(--text);
+    -webkit-mask: url("icon.svg") no-repeat center / contain;
+    mask: url("icon.svg") no-repeat center / contain;
+  }
+  header .meta { color: var(--muted); font-size: 12px; text-align: right; line-height: 1.5; margin-right: 20px; }
+  #rescan-btn { background: var(--card); border: 1px solid var(--border); color: var(--muted); padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-top: 4px; }
+  #rescan-btn:hover { color: var(--text); border-color: var(--accent); }
+  #rescan-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  /* Same shape as Rescan so the header reads as one row of controls. Deliberately
+     NOT disabled by showAuthNotice: with no token there is nothing to fetch, but
+     the theme is a local preference and still works. */
+  #theme-btn { background: var(--card); border: 1px solid var(--border); color: var(--muted);
+               padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;
+               margin-top: 4px; margin-right: 8px; white-space: nowrap; }
+  #theme-btn:hover { color: var(--text); border-color: var(--accent); }
+
+  #filter-bar { background: var(--card); border-bottom: 1px solid var(--border); padding: 10px 24px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .filter-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); white-space: nowrap; }
+  .filter-sep { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
+  /* Model multi-select: a compact trigger in the bar that opens a grouped panel. */
+  .model-select { position: relative; flex-shrink: 0; }
+  .model-trigger { display: flex; align-items: center; gap: 8px; min-width: 170px; max-width: 320px; padding: 5px 10px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 12px; cursor: pointer; transition: border-color 0.15s; }
+  .model-trigger:hover, .model-trigger.open { border-color: var(--accent); }
+  #model-trigger-label { flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .model-caret { color: var(--muted); font-size: 10px; flex-shrink: 0; transition: transform 0.15s; }
+  .model-trigger.open .model-caret { transform: rotate(180deg); }
+  .model-panel { position: absolute; top: calc(100% + 6px); left: 0; z-index: 50; min-width: 250px; max-width: 340px; max-height: 360px; overflow-y: auto; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); }
+  .model-panel[hidden] { display: none; }
+  .model-panel-actions { display: flex; gap: 6px; padding-bottom: 8px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+  .model-group-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); padding: 8px 8px 4px; }
+  .model-cb-label { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 12px; color: var(--muted); transition: background 0.12s, color 0.12s; user-select: none; }
+  .model-cb-label:hover { background: var(--raised); color: var(--text); }
+  .model-cb-label.checked { color: var(--text); }
+  .model-cb-label input { display: none; }
+  .model-cb-box { width: 15px; height: 15px; flex-shrink: 0; border-radius: 4px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 10px; line-height: 1; color: transparent; transition: background 0.12s, border-color 0.12s; }
+  .model-cb-label.checked .model-cb-box { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .model-cb-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .filter-btn { padding: 3px 10px; border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 11px; cursor: pointer; white-space: nowrap; }
+  .filter-btn:hover { border-color: var(--accent); color: var(--text); }
+  /* Date range — a compact dropdown. The old segmented button row (8 buttons)
+     wrapped badly in the narrow VS Code panel; a single select stays put. Styled
+     to match the model trigger. */
+  .range-select { position: relative; flex-shrink: 0; }
+  .range-select select { appearance: none; -webkit-appearance: none; min-width: 150px; padding: 5px 30px 5px 10px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 12px; cursor: pointer; transition: border-color 0.15s; }
+  .range-select select:hover, .range-select select:focus { border-color: var(--accent); outline: none; }
+  .range-select::after { content: "\25BE"; position: absolute; right: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 10px; pointer-events: none; }
+  .range-select option { background: var(--card); color: var(--text); }
+  /* The refresh interval picker reuses the range dropdown's styling; it just
+     needs less room than a range name. */
+  .refresh-select select { min-width: 118px; }
+  .refresh-select select:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Source switch — which assistant's usage is on screen. Styled as a segmented
+     control rather than another dropdown: it is the top-level context for every
+     other number on the page, not one more filter among several. */
+  .source-switch { display: inline-flex; gap: 2px; padding: 2px; flex-shrink: 0;
+                   background: var(--bg); border: 1px solid var(--border); border-radius: 7px; }
+  .source-switch[hidden] { display: none; }
+  .source-btn { padding: 4px 12px; border: 0; border-radius: 5px; background: transparent;
+                color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer;
+                white-space: nowrap; transition: background 0.12s, color 0.12s; }
+  .source-btn:hover { color: var(--text); }
+  .source-btn.active { background: var(--selected); color: var(--text); }
+  .source-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* First-run chooser. Shown only when a machine holds BOTH histories and the
+     reader has never picked — the two are measured in different units, so the
+     answer is asked for once rather than guessed. */
+  .source-chooser { position: fixed; inset: 0; z-index: 200; display: flex;
+                    align-items: center; justify-content: center; padding: 24px;
+                    background: rgba(0, 0, 0, 0.72); }
+  .source-chooser[hidden] { display: none; }
+  .chooser-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+                  padding: 28px; max-width: 460px; width: 100%;
+                  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); }
+  .chooser-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .chooser-sub { font-size: 12.5px; color: var(--muted); margin-bottom: 18px; line-height: 1.45; }
+  .chooser-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 480px) { .chooser-options { grid-template-columns: 1fr; } }
+  .chooser-btn { display: flex; flex-direction: column; gap: 4px; align-items: flex-start;
+                 padding: 14px 16px; background: var(--bg); border: 1px solid var(--border);
+                 border-radius: 9px; cursor: pointer; text-align: left;
+                 transition: border-color 0.12s, background 0.12s; }
+  .chooser-btn:hover { border-color: var(--accent); background: var(--raised); }
+  .chooser-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .auth-cmd { font-family: monospace; font-size: 12.5px; color: var(--text);
+              background: var(--bg); border: 1px solid var(--border);
+              border-radius: 6px; padding: 9px 11px; margin-bottom: 14px;
+              user-select: all; overflow-x: auto; }
+  .chooser-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .chooser-meta { font-size: 11.5px; color: var(--muted); font-family: monospace; }
+
+  /* Shown while a source's history is being fetched: the content below is the
+     previous assistant's and must not read as the new one's. */
+  /* Quota threshold alerts. Chips rather than a multi-select: the whole point
+     is that several can be on at once, and a closed dropdown hides that. */
+  .alert-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+               margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .alert-label { font-size: 11px; font-weight: 600; text-transform: uppercase;
+                 letter-spacing: 0.05em; color: var(--muted); white-space: nowrap; }
+  .alert-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+  .alert-chip { padding: 3px 9px; border-radius: 5px; border: 1px solid var(--border);
+                background: transparent; color: var(--muted); font-size: 11.5px;
+                font-family: monospace; cursor: pointer;
+                transition: background 0.12s, color 0.12s, border-color 0.12s; }
+  .alert-chip:hover { color: var(--text); border-color: var(--accent); }
+  .alert-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .alert-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .alert-add { margin-top: 0; padding-top: 8px; border-top: 0; }
+  .alert-input { width: 74px; padding: 3px 8px; border-radius: 5px; font-size: 11.5px;
+                 font-family: monospace; background: var(--bg); color: var(--text);
+                 border: 1px solid var(--border); }
+  .alert-input:focus { outline: none; border-color: var(--accent); }
+  .alert-x { margin-left: 5px; border: 0; background: transparent; color: inherit;
+             font-size: 13px; line-height: 1; cursor: pointer; opacity: 0.75; padding: 0; }
+  .alert-x:hover { opacity: 1; }
+  .alert-empty { font-size: 11.5px; color: var(--muted); font-family: monospace; }
+  .alert-error { font-size: 11.5px; color: var(--red); }
+  .alert-error[hidden] { display: none; }
+  .alert-note { font-size: 11px; color: var(--muted); font-family: monospace; }
+  /* One block per quota window. Thresholds are per limit, so the control is
+     per limit too — and the blocks are generated from the payload, so a limit
+     kind this stylesheet has never heard of is styled the same as the rest. */
+  .alert-windows { display: flex; flex-direction: column; gap: 2px; }
+  .alert-window { padding: 6px 0; border-top: 1px solid var(--border); }
+  .alert-window:first-child { border-top: 0; }
+  .alert-window .alert-label { min-width: 0; }
+  .alert-now { font-size: 11px; color: var(--muted); font-family: monospace; }
+  /* A window that still holds a threshold while the cache has stopped
+     reporting it. Muted rather than red: the setting is intact and will apply
+     again — it is information, not a fault. */
+  .alert-stale { font-size: 11px; color: var(--muted); font-style: italic;
+                 cursor: help; }
+  .alert-window .alert-input { max-width: 88px; }
+  /* The in-page delivery channel for a quota alert: deliverAlert
+     (web/js/58-alerts.js) shows it for EVERY alert, whatever the notification
+     permission says. The note above that function is the authority on why;
+     this rule is only its box. */
+  .quota-alert { margin-top: 12px; padding: 10px 13px; border-radius: 7px;
+                 background: rgba(217,119,87,0.14); border: 1px solid var(--accent);
+                 color: var(--text); font-size: 12.5px; cursor: pointer; }
+  .quota-alert[hidden] { display: none; }
+
+  .container.loading { opacity: 0.35; pointer-events: none; transition: opacity 0.15s; }
+
+  #snapshot-status { display: flex; align-items: center; gap: 10px;
+                     margin-bottom: 18px; padding: 12px 16px; border-radius: 8px;
+                     border: 1px solid var(--accent); background: var(--card);
+                     color: var(--text); font-size: 13px; }
+  #snapshot-status[hidden] { display: none; }
+  #snapshot-status .load-spinner { width: 16px; height: 16px; flex-shrink: 0;
+                                   border-width: 2px; }
+  #snapshot-status.failed .load-spinner { display: none; }
+  #docker-status { margin-bottom: 14px; color: var(--muted); font-size: 12px; }
+  #docker-status.warning { color: var(--text); border-left: 3px solid var(--accent);
+                           padding-left: 10px; }
+  #docker-status[hidden] { display: none; }
+
+  /* The first load of a source has nothing on screen to dim, so the dim alone
+     showed a blank page for the whole fetch — several seconds against a large
+     history, indistinguishable from a broken build. The overlay sits OUTSIDE
+     .container precisely so the 0.35 above cannot apply to it. */
+  #load-overlay { position: fixed; inset: 0; z-index: 60; display: flex;
+                  align-items: center; justify-content: center;
+                  background: color-mix(in srgb, var(--bg) 62%, transparent); }
+  #load-overlay[hidden] { display: none; }
+  .load-box { display: flex; flex-direction: column; align-items: center; gap: 14px;
+              background: var(--card); border: 1px solid var(--border);
+              border-radius: 12px; padding: 26px 34px;
+              box-shadow: 0 10px 30px var(--shadow); }
+  .load-spinner { width: 34px; height: 34px; border-radius: 50%;
+                  /* A ring that is mostly track with one accent arc, so the
+                     rotation is legible against either theme. */
+                  border: 3px solid var(--border); border-top-color: var(--accent);
+                  animation: load-spin 0.8s linear infinite; }
+  .load-text { color: var(--text); font-size: 13px; }
+  #scan-retry { background: var(--accent); border: 0; color: #fff;
+                border-radius: 6px; padding: 7px 14px; cursor: pointer;
+                font: inherit; font-size: 13px; }
+  #scan-retry[hidden] { display: none; }
+  #scan-retry:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+  @keyframes load-spin { to { transform: rotate(360deg); } }
+  /* A spinner is decoration; the text is the message. Honour the OS setting
+     rather than animating regardless. */
+  @media (prefers-reduced-motion: reduce) {
+    .load-spinner { animation-duration: 2.4s; }
+  }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .stat-card .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .stat-card .value { font-size: 22px; font-weight: 700; }
+  /* The range line now carries its dates too, so it wraps on a narrow card —
+     grid rows stretch, so a wrapped card stays level with its neighbours. */
+  .stat-card .sub { color: var(--text); font-size: 11px; margin-top: 4px; line-height: 1.35; }
+  .stat-card .note { color: var(--muted); font-size: 10.5px; margin-top: 2px; line-height: 1.3; }
+
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  /* min-width:0 lets the grid column shrink below the canvas's intrinsic
+     pixel width; without it, narrowing the window can't narrow the container,
+     so Chart.js's ResizeObserver never fires until a data refresh rebuilds the
+     canvas. (Expanding already works — 1fr columns grow freely.) */
+  .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; min-width: 0; }
+  .chart-card.wide { grid-column: 1 / -1; }
+  .chart-card h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 16px; }
+  .chart-wrap { position: relative; height: 240px; }
+  .chart-wrap.tall { height: 300px; }
+  /* Pan control for a chart showing a window of a longer range. The track is as
+     wide as the whole range would be at one column per day, so the thumb's size
+     is the fraction of the range on screen. Only the thumb moves — the chart's
+     axes are drawn by a single chart at the container's width and never shift. */
+  /* An explicit height, not just the 1px track: the scrollbar is laid out
+     inside this element's box, so an auto height collapses onto the track and
+     clips the thumb out of sight — the one affordance saying "there is more". */
+  .chart-pan { overflow-x: auto; overflow-y: hidden; margin-top: 8px; height: 14px; }
+  .chart-pan[hidden] { display: none; }
+  .chart-pan-track { height: 1px; }
+  .chart-pan { scrollbar-width: thin; }
+  .chart-pan::-webkit-scrollbar { height: 12px; }
+  .chart-pan::-webkit-scrollbar-thumb { border-width: 2px; }
+  .chart-pan-hint { font-size: 11px; color: var(--muted); margin-top: 5px; }
+  .chart-pan-hint:empty { display: none; }
+  /* touch-action keeps a vertical swipe scrolling the page while a horizontal
+     one pans the chart. */
+  .chart-pannable .chart-wrap canvas { cursor: grab; touch-action: pan-y; }
+  .chart-pannable.dragging .chart-wrap canvas { cursor: grabbing; }
+
+  /* The daily card: plot on the left, per-series min/mean/max on the right.
+     Stacked is the BASE and the two-column layout is the exception, so a narrow
+     page never squeezes the chart on its way down — the VS Code panel is often
+     under 500px wide, and side-by-side there would leave four or five bars.
+     The breakpoint is 1024 rather than 640 because at 768 the panel takes the
+     plot down to about seven columns, which is squeezed even though it fits.
+
+     The panel column is 360px because that is what its contents MEASURE, not a
+     guess. It was 200px, and the table inside it needs 334 — four columns of
+     nowrap figures, the widest of them money to four decimals. Measured in
+     Chrome against the real database, the table then rendered 146px outside the
+     panel and 125px outside the card, so Mean and Max were simply off the page,
+     and it was the sole cause of a horizontal scrollbar on the WHOLE page at
+     1024 (document scrollWidth 1125 against a 1024 client) and at 1280
+     (1381/1280). `min-width: 0` and `overflow-x: auto` below are the guarantee
+     rather than the number: whatever the figures grow to, the excess scrolls
+     inside the panel instead of escaping the card. */
+  .daily-body { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; }
+  .daily-plot { min-width: 0; }
+  @media (min-width: 1024px) {
+    .daily-body { grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; }
+  }
+  /* The plot is what the arrow keys move, so it is what takes focus. Same ring
+     as every other focusable control on the page. */
+  #daily-chart-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  /* A grid item's automatic minimum size is its CONTENT's width, so without
+     these the table pushed its own column wider than the card and the page grew
+     a horizontal scrollbar. Being a scroll container also decouples the plot's
+     width from the panel's contents, which is what left the pan track sized
+     from a stale reading at 390px. */
+  .daily-stats { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; min-width: 0; overflow-x: auto; overflow-y: hidden; }
+  .daily-stats-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .daily-stats-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; }
+  .daily-stats-empty { font-size: 11px; color: var(--muted); }
+  .daily-stats-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .daily-stats-table th, .daily-stats-table td { padding: 3px 2px; text-align: right; }
+  .daily-stats-table thead th { color: var(--muted); font-weight: 600; white-space: nowrap; border-bottom: 1px solid var(--border); }
+  .daily-stats-table thead th:first-child, .daily-stats-table tbody th { text-align: left; }
+  .daily-stats-table tbody th { font-weight: 500; }
+  .daily-sort-cell, .daily-sort-name, .daily-sort-reset {
+    background: transparent; border: 1px solid transparent; border-radius: 4px;
+    color: var(--text); font: inherit; padding: 1px 4px; cursor: pointer;
+    white-space: nowrap;
+  }
+  /* A figure must never wrap — `$3,051.7339` broken across two lines is not a
+     number any more — but a series LABEL may, and that is what lets the whole
+     table fit a phone without a scrollbar of its own. */
+  .daily-sort-name { color: var(--muted); white-space: normal; }
+  .daily-sort-reset { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); border-color: var(--border); }
+  .daily-sort-cell:hover, .daily-sort-name:hover, .daily-sort-reset:hover { background: var(--raised); color: var(--text); }
+  .daily-sort-cell.active, .daily-sort-name.active, .daily-sort-reset.active { background: var(--selected); color: var(--text); border-color: var(--border); }
+  .daily-sort-cell:focus-visible, .daily-sort-name:focus-visible, .daily-sort-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .daily-stats-note { font-size: 10px; color: var(--muted); margin-top: 7px; line-height: 1.35; }
+
+  .chart-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+  .chart-header h2 { margin-bottom: 0; }
+  .chart-header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .chart-day-count { font-size: 11px; color: var(--muted); }
+  .tz-group { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .tz-btn { padding: 3px 10px; background: transparent; border: none; border-right: 1px solid var(--border); color: var(--muted); font-size: 11px; cursor: pointer; transition: background 0.15s, color 0.15s; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  .tz-btn:last-child { border-right: none; }
+  .tz-btn:hover { background: var(--raised); color: var(--text); }
+  .tz-btn.active { background: var(--selected); color: var(--text); }
+  .peak-legend { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+  /* The bars this labels are drawn at 0.9 on a transparent canvas over the
+     card, so an opaque swatch of the same token is a visibly different red
+     (#C74E39 against #B64936 on the dark theme). The same alpha over the same
+     surface makes the two identical — opacity rather than a second literal,
+     because the swatch has to keep following --red. */
+  .peak-swatch { width: 10px; height: 10px; background: var(--red); border-radius: 2px; display: inline-block; opacity: 0.9; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: var(--text); }
+  .sort-icon { font-size: 9px; opacity: 0.8; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--raised); }
+  .model-tag { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 11px; background: rgba(72,160,199,0.15); color: var(--blue); }
+  .cost { color: var(--green); font-family: monospace; }
+  /* What a column of tokens cost, printed under the count. The count stays the
+     primary figure (it is what the column sorts by), and the money says so by
+     being 11px monospace under a 13px number — NOT by `opacity`. Opacity
+     composites the text with whatever is behind it, so `var(--green)` at 0.72
+     reached the screen at 3.03:1 on a light card where the token itself is
+     5.18:1, and the nested unit price at 1.64:1 on a dark one. A rule may not
+     dim text below the contrast its own palette token carries. */
+  .cell-cost { display: block; font-family: monospace; font-size: 11px;
+               color: var(--green); margin-top: 2px; }
+  /* The unit price the cost was derived from, so the multiplication is visible
+     rather than implied — which only works if it can be read. It sits INSIDE
+     .cell-cost, so it was inside that opacity group too. */
+  .cell-rate { color: var(--muted); }
+  /* Column totals across every model in range. */
+  tfoot td { border-top: 1px solid var(--border); border-bottom: none;
+             padding-top: 11px; font-weight: 600; }
+  tfoot tr:hover td { background: transparent; }
+  .total-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+                 color: var(--muted); font-weight: 600; }
+  .cost-na { color: var(--muted); font-family: monospace; font-size: 11px; }
+  .num { font-family: monospace; }
+  .muted { color: var(--muted); }
+  .topic-cell { box-sizing: border-box; min-width: 160px; max-width: 260px; overflow-wrap: anywhere; font-size: 12px; color: var(--text); }
+  .untitled { color: var(--muted); font-style: italic; }
+  .section-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .section-header .section-title { margin-bottom: 0; }
+  .export-btn { background: var(--card); border: 1px solid var(--border); color: var(--muted); padding: 3px 10px; border-radius: 5px; cursor: pointer; font-size: 11px; }
+  .export-btn:hover { color: var(--text); border-color: var(--accent); }
+  .table-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 24px; overflow-x: auto; }
+  .table-foot { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 12px; }
+  .table-foot:empty { margin-top: 0; }
+  .show-more-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+  .show-more-btn:hover { color: var(--text); border-color: var(--accent); }
+  .show-more-link { color: var(--blue); text-decoration: none; font-size: 12px; cursor: pointer; }
+  .show-more-link:hover { text-decoration: underline; }
+
+  footer { border-top: 1px solid var(--border); padding: 20px 24px; margin-top: 8px; }
+  .footer-content { max-width: 1400px; margin: 0 auto; }
+  .footer-content p { color: var(--muted); font-size: 12px; line-height: 1.7; margin-bottom: 4px; }
+  .footer-content p:last-child { margin-bottom: 0; }
+  .footer-content a { color: var(--blue); text-decoration: none; }
+  .footer-content a:hover { text-decoration: underline; }
+  .footer-content a.update-link { color: var(--accent); font-weight: 600; }
+
+  /* Jump bar — a sticky table-of-contents for a long report. Styled as a sibling
+     of the filter bar (same card surface + bottom border) so it reads as part of
+     the same control strip. It pins to the viewport top once the header/filter
+     scroll away. z-index sits below the model panel (50) so the dropdown still
+     overlays it. */
+  /* Sticky table-of-contents for the long report: three compact entries —
+     Overview, plus Graphs and Tables menus that reveal their sections on hover
+     (or keyboard focus). Stays small so it never crowds the narrow VS Code panel. */
+  #jump-bar { position: sticky; top: 0; z-index: 20; background: var(--card); border-bottom: 1px solid var(--border); padding: 7px 24px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
+  .jump-menu { position: relative; }
+  .jump-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 3px 11px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; transition: background 0.12s, color 0.12s, border-color 0.12s; }
+  .jump-trigger svg { display: block; }
+  .jump-caret { font-size: 9px; }
+  .jump-trigger:hover, .jump-menu:focus-within .jump-trigger { color: var(--text); background: var(--raised); }
+  .jump-trigger.active { color: var(--text); border-color: var(--border); }
+  .jump-panel { position: absolute; top: calc(100% + 5px); left: 0; z-index: 50; min-width: 160px; display: none; flex-direction: column; gap: 2px; padding: 6px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); }
+  /* Invisible bridge over the 5px gap so the menu doesn't close as the pointer
+     travels from the trigger down to the panel. */
+  .jump-panel::before { content: ""; position: absolute; left: 0; right: 0; top: -8px; height: 8px; }
+  .jump-menu-end .jump-panel { left: auto; right: 0; }
+  /* Touch has no hover, and initSectionNav cancels mousedown so :focus-within
+     never fires from a tap either — which made these menus literally unopenable
+     on a phone. The .open class, toggled on click, is the real switch; hover is
+     a convenience for pointing devices only. */
+  .jump-menu.open > .jump-panel, .jump-menu:focus-within .jump-panel { display: flex; }
+  @media (hover: hover) and (pointer: fine) {
+    .jump-menu:hover .jump-panel { display: flex; }
+  }
+  .jump-link { padding: 3px 11px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; white-space: nowrap; transition: background 0.12s, color 0.12s, border-color 0.12s; }
+  .jump-panel .jump-link { display: block; width: 100%; text-align: left; padding: 5px 10px; }
+  .jump-link:hover { color: var(--text); background: var(--raised); }
+  .jump-link.active { color: var(--text); background: var(--selected); border-color: var(--border); font-weight: 600; }
+  /* Inline info affordance (e.g. the dispatches table) — native title tooltip. */
+  .info-icon { display: inline-flex; align-items: center; vertical-align: middle; margin-left: 3px; color: var(--muted); cursor: help; }
+  .info-icon svg { display: block; }
+  .info-icon:hover { color: var(--text); }
+  /* Anchored sections clear the sticky bar when jumped/collapsed to. */
+  .stats-row, .chart-card, .table-card { scroll-margin-top: calc(var(--jump-h) + 14px); }
+
+  /* Collapsible cards — a full section fold, independent of in-table Show
+     more/less (which only pages rows). Collapsing hides the card body and its
+     header controls, leaving just the caret + title. State persists per card in
+     localStorage. */
+  /* The caret is the only thing that says a section can be folded, so it does
+     NOT inherit the heading colour: section headings are deliberately dim
+     (--muted, #4F4F50 on a #1E1F20 card), which rendered the control all but
+     invisible and left every card looking fixed. It carries --text on its own,
+     goes accent on hover, and turns to point down when open. */
+  .card-caret {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; margin-right: 9px; vertical-align: -4px;
+    font-size: 13px; line-height: 1; color: var(--text);
+    background: var(--raised); border-radius: 5px;
+    transform: rotate(90deg);
+    transition: transform 0.15s, color 0.15s, background 0.15s;
+  }
+  .collapsed .card-caret { transform: rotate(0deg); }
+  .chart-card > h2, .chart-header > h2, .section-title { cursor: pointer; user-select: none; }
+  .chart-card > h2:hover, .chart-header > h2:hover, .section-title:hover { color: var(--text); }
+  /* The whole heading is the hit area, so the chip lights up with it. */
+  .chart-card > h2:hover .card-caret,
+  .chart-header > h2:hover .card-caret,
+  .section-title:hover .card-caret { color: var(--accent); background: var(--selected); }
+  /* On touch there is no hover to reveal the affordance, so give the control a
+     finger-sized target rather than an 11px glyph. */
+  @media (pointer: coarse) {
+    .card-caret { width: 24px; height: 24px; font-size: 13px; margin-right: 6px; margin-left: -4px; }
+  }
+  .jump-link:focus-visible, .jump-trigger:focus-visible, .info-icon:focus-visible, .chart-card > h2:focus-visible, .chart-header > h2:focus-visible, .section-title:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .chart-card.collapsed > h2, .chart-card.collapsed > .chart-header { margin-bottom: 0; }
+  .table-card.collapsed > .section-title, .table-card.collapsed > .section-header { margin-bottom: 0; }
+  .chart-card.collapsed > *:not(h2):not(.chart-header),
+  .chart-card.collapsed .chart-header > *:not(h2),
+  .table-card.collapsed > *:not(.section-title):not(.section-header),
+  .table-card.collapsed .section-header > *:not(.section-title) { display: none; }
+
+  @media (max-width: 768px) { .charts-grid { grid-template-columns: 1fr; } .chart-card.wide { grid-column: 1; } }
+
+  /* ── Phone layout ────────────────────────────────────────────────────────
+     Nothing below 640px is a smaller desktop; it is a different reading
+     posture. Tables become stacks of labelled rows, the gutters shrink, and
+     the charts get taller because they lose horizontal room. */
+  @media (max-width: 640px) {
+    /* 48px of a 375px screen was page padding alone. */
+    .container { padding: 14px; }
+    header, #filter-bar, #jump-bar, footer { padding-left: 14px; padding-right: 14px; }
+    .chart-card, .table-card { padding: 12px; }
+    .table-card { margin-bottom: 16px; }
+
+    /* Wrapping a flex row splits label from control — "RANGE" ended one line
+       and its dropdown started the next. A two-column grid keeps each pair
+       together and reads as a form. The dividers have no job once the controls
+       are on separate rows. */
+    #filter-bar { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px 12px; }
+    #filter-bar .filter-sep { display: none; }
+    #filter-bar .model-select, #filter-bar .range-select { justify-self: stretch; }
+    .model-trigger, .range-select select { width: 100%; max-width: none; }
+    .model-panel { min-width: 0; width: 100%; max-width: none; }
+
+    /* Three items on one unwrapping row pushed the title to two lines. */
+    header { flex-wrap: wrap; gap: 8px 12px; padding-top: 12px; padding-bottom: 12px; }
+    header h1 { font-size: 16px; }
+    header .meta { order: 3; flex-basis: 100%; text-align: left; margin-right: 0; }
+    #rescan-btn, #theme-btn { margin-top: 0; }
+
+    /* minmax(160px) + a 16px gap needs 336px for two columns, so a 375px screen
+       got ONE — eight stacked tiles, ~830px of scrolling before the first
+       chart. 132 + 10 fits two. */
+    .stats-row { grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .stat-card { padding: 12px; }
+    .stat-card .value { font-size: 18px; }
+
+    /* Axis titles and legends take a fixed slice; give the plot its room back. */
+    .chart-wrap { height: 300px; }
+    .chart-wrap.tall { height: 360px; }
+
+    /* Rows become cards. The header row is hidden from sight but kept for
+       assistive tech; each cell prints its own column name from the data-label
+       that labelCells() stamped on it. */
+    /* Deliberately NOT `tfoot td { display: block }`: that selector outranks
+       `.stack-table td { display: flex }` below, which is what splits each cell
+       into label-on-the-left / value-on-the-right. Setting it collapsed the
+       totals row into a right-aligned run of "TURNS87.1K". */
+    .stack-table tfoot, .stack-table tfoot tr { display: block; width: 100%; }
+    .stack-table tfoot tr { border: 1px solid var(--accent); border-radius: 8px;
+                            padding: 2px 10px; margin-top: 4px; background: var(--bg); }
+    .stack-table tfoot td { border-top: none; }
+    .stack-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden;
+                         clip-path: inset(50%); white-space: nowrap; }
+    .stack-table, .stack-table tbody, .stack-table tr, .stack-table td { display: block; width: 100%; }
+    .stack-table tr { border: 1px solid var(--border); border-radius: 8px;
+                      padding: 2px 10px; margin-bottom: 10px; background: var(--bg); }
+    .stack-table tr:last-child { margin-bottom: 0; }
+    .stack-table tr:hover td { background: transparent; }   /* the row-hover rule fights the card */
+    .stack-table td { display: flex; justify-content: space-between; align-items: baseline;
+                      gap: 12px; text-align: right; padding: 7px 0;
+                      border-bottom: 1px solid var(--border); }
+    .stack-table tr td:last-child { border-bottom: none; }
+    .stack-table td::before { content: attr(data-label); flex: 0 0 auto; text-align: left;
+                              color: var(--muted); font-size: 11px; text-transform: uppercase;
+                              letter-spacing: 0.05em; }
+    /* A cell with no label (an empty-state row, or a column labelCells skipped)
+       must not render a blank gutter. */
+    .stack-table td:not([data-label]) { display: block; text-align: left; }
+    .stack-table td:not([data-label])::before { content: none; }
+    .stack-table td[colspan] { display: block; text-align: center; }
+    /* A money line with its unit rate can be too wide beside a label and token
+       count on a phone. Let it take the
+       next line of the same cell rather than squeezing all three across one. */
+    .stack-table td { flex-wrap: wrap; }
+    .stack-table .cell-cost { flex: 1 0 100%; text-align: right; }
+    .stack-table .topic-cell { min-width: 0; max-width: none; }
+    /* The card is the row now, so the wrapper has nothing to scroll. */
+    .table-card { overflow-x: visible; }
+
+    .plan-windows { grid-template-columns: 1fr; gap: 14px; }
+    .section-header { flex-wrap: wrap; gap: 6px; }
+    .limits-summary { gap: 16px; }
+    .footer-content p { font-size: 11.5px; }
+  }
+
+  /* Touch ergonomics, independent of width — this also covers a tablet in
+     landscape, which is wider than 640px but still has no hover. */
+  @media (pointer: coarse) {
+    /* The 21px desktop scrollbar gutter is drawn by nothing on iOS and just
+       steals width. */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    /* Under 16px, iOS Safari zooms the page when a select is focused. */
+    .range-select select { font-size: 16px; padding-top: 7px; padding-bottom: 7px; }
+    .jump-trigger, .jump-link, .tz-btn, .filter-btn, .show-more-btn,
+    .export-btn, #rescan-btn { min-height: 34px; }
+    .model-cb-label { padding: 9px 8px; }
+  }
+
+/* ── Plan limits (subscription only) ─────────────────────────────────────── */
+.plan-tier { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+.plan-windows { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px 24px; margin: 4px 0 12px; }
+.plan-window { display: flex; flex-direction: column; gap: 6px; }
+.plan-window-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.plan-window-label { font-size: 12.5px; color: var(--text); }
+.plan-window-pct { font-family: monospace; font-size: 15px; font-weight: 600; }
+.plan-window-pct.muted { font-size: 12px; font-weight: 400; color: var(--muted); }
+.plan-window-foot { font-size: 11px; color: var(--muted); }
+.plan-bar { height: 7px; border-radius: 4px; background: var(--raised); overflow: hidden; }
+.plan-bar-fill { height: 100%; border-radius: 4px; transition: width .3s; }
+/* Severity comes from the server, and an unrecognised value falls back to
+   `normal` in the renderer, so these three are the whole set. */
+.plan-bar-fill.sev-normal   { background: var(--green); }
+.plan-bar-fill.sev-warning  { background: var(--accent); }
+.plan-bar-fill.sev-critical { background: var(--red); }
+.plan-bar-fill.sev-expired  { background: var(--muted); width: 100%; opacity: .35; }
+.plan-window-pct.sev-normal   { color: var(--green); }
+.plan-window-pct.sev-warning  { color: var(--accent); }
+.plan-window-pct.sev-critical { color: var(--red); }
+.plan-window.expired .plan-window-pct { color: var(--muted); font-size: 12px; font-weight: 400; }
+.plan-note { font-size: 11.5px; color: var(--muted); margin: 2px 2px 0; line-height: 1.5; }
+.plan-note.stale { color: var(--accent); }
+
+/* ── Rate limits ─────────────────────────────────────────────────────────── */
+.limits-summary { display: flex; flex-wrap: wrap; gap: 22px; margin: 2px 0 14px; }
+.limits-summary .limit-stat { display: flex; flex-direction: column; gap: 2px; }
+.limits-summary .limit-stat b { font-size: 19px; font-weight: 600; color: var(--text); }
+.limits-summary .limit-stat span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.limits-note { font-size: 11.5px; color: var(--muted); margin: 10px 2px 0; line-height: 1.5; }
+.limits-clear { color: var(--muted); font-size: 13px; padding: 6px 2px 2px; }
+td.limit-blocked { font-variant-numeric: tabular-nums; }
+
+/* ── Reasoning effort / stop reasons ─────────────────────────────────────── */
+/* A note under a table, for the caveat the numbers themselves cannot carry.
+   Same weight as .limits-note, which does the same job for Rate Limits. */
+.table-note { font-size: 11.5px; color: var(--muted); margin: 12px 2px 0; line-height: 1.5; }
+.table-note code { font-family: monospace; font-size: 11px; color: var(--text);
+                   background: var(--selected); padding: 1px 5px; border-radius: 4px; }
+.table-note strong { color: var(--text); font-weight: 600; }
+/* Effort levels and stop reasons are enum-like words, tagged like a model id so
+   the eye reads them as a category rather than as prose. */
+.effort-tag, .stop-tag { display: inline-block; padding: 2px 7px; border-radius: 4px;
+                         font-size: 11px; background: rgba(155,126,199,0.15);
+                         color: var(--purple); }
+.stop-tag { background: rgba(116,201,145,0.15); color: var(--green); }
+/* Never recorded — the absence of a value, not a value. Muted so it does not
+   read as one more level beside the real ones. */
+.effort-tag.unset, .stop-tag.unset { background: var(--selected); color: var(--muted); }
+/* The truncated bucket: an answer cut off at the ceiling and billed in full. */
+.stop-tag.truncated { background: rgba(199,78,57,0.15); color: var(--red); }
+
+/* Shown in a chart's place when the vendored Chart.js runtime did not load —
+   a 404 on /assets/chart.umd.js, which `dashboard.find_chart_file()` returns
+   deliberately on a SHA-256 mismatch. Before this, the unguarded top-level
+   `Chart.defaults` writes threw and aborted the single concatenated script, so
+   the whole page died at "Loading..." rather than losing five canvases. */
+.chart-missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 120px;
+  padding: 16px;
+  font-size: 13px;
+  line-height: 1.5;
+}
