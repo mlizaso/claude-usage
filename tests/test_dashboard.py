@@ -2726,6 +2726,22 @@ class PayloadCacheTestCase(unittest.TestCase):
         self.addCleanup(dashboard_data.reset_payload_cache)
         dashboard_data.reset_payload_cache()
 
+    def _assert_alias_reopen_failure_invalidates(self, stored_path, alias):
+        if os.name == "posix":
+            stored_path.unlink()
+            self.assertIn("error", get_dashboard_data(alias))
+        else:
+            # Windows cannot unlink the probe's open SQLite file. Exercise a
+            # refused reopen instead, retaining the real cached identity,
+            # filesystem alias and probe until the failure invalidates them.
+            with mock.patch.object(
+                    dashboard_data, "connect_existing_db",
+                    side_effect=db.UnsafeDatabasePathError("fixture refusal")):
+                with self.assertRaises(db.UnsafeDatabasePathError):
+                    get_dashboard_data(alias)
+        self.assertEqual(dashboard_data._PAYLOAD_CACHE, {})
+        self.assertIsNone(dashboard_data._VERSION_PROBE)
+
     @staticmethod
     def _seed(path, session_id="sess-cache", model="claude-opus-5",
               source="claude"):
@@ -3286,11 +3302,7 @@ class TestThePayloadCacheCannotServeStaleData(PayloadCacheTestCase):
         self.assertTrue(dashboard_data._PAYLOAD_CACHE)
         self.assertIsNotNone(dashboard_data._VERSION_PROBE)
 
-        upper.unlink()
-        self.assertIn("error", get_dashboard_data(self.db_path))
-
-        self.assertEqual(dashboard_data._PAYLOAD_CACHE, {})
-        self.assertIsNone(dashboard_data._VERSION_PROBE)
+        self._assert_alias_reopen_failure_invalidates(upper, self.db_path)
 
     def test_unicode_case_alias_invalidation_follows_an_insensitive_volume(self):
         """Case probing must not assume every cased character is ASCII."""
@@ -3304,11 +3316,7 @@ class TestThePayloadCacheCannotServeStaleData(PayloadCacheTestCase):
         self.assertTrue(dashboard_data._PAYLOAD_CACHE)
         self.assertIsNotNone(dashboard_data._VERSION_PROBE)
 
-        upper.unlink()
-        self.assertIn("error", get_dashboard_data(lower))
-
-        self.assertEqual(dashboard_data._PAYLOAD_CACHE, {})
-        self.assertIsNone(dashboard_data._VERSION_PROBE)
+        self._assert_alias_reopen_failure_invalidates(upper, lower)
 
     def test_case_alias_probe_checks_later_characters(self):
         """One unsupported case mapping must not hide a later valid alias."""
@@ -3322,11 +3330,7 @@ class TestThePayloadCacheCannotServeStaleData(PayloadCacheTestCase):
         self.assertTrue(dashboard_data._PAYLOAD_CACHE)
         self.assertIsNotNone(dashboard_data._VERSION_PROBE)
 
-        lower.unlink()
-        self.assertIn("error", get_dashboard_data(upper))
-
-        self.assertEqual(dashboard_data._PAYLOAD_CACHE, {})
-        self.assertIsNone(dashboard_data._VERSION_PROBE)
+        self._assert_alias_reopen_failure_invalidates(lower, upper)
 
     def test_unicode_normalization_alias_invalidation_follows_the_volume(self):
         """Canonical-equivalent names can alias even when their bytes differ."""
@@ -3340,11 +3344,7 @@ class TestThePayloadCacheCannotServeStaleData(PayloadCacheTestCase):
         self.assertTrue(dashboard_data._PAYLOAD_CACHE)
         self.assertIsNotNone(dashboard_data._VERSION_PROBE)
 
-        composed.unlink()
-        self.assertIn("error", get_dashboard_data(decomposed))
-
-        self.assertEqual(dashboard_data._PAYLOAD_CACHE, {})
-        self.assertIsNone(dashboard_data._VERSION_PROBE)
+        self._assert_alias_reopen_failure_invalidates(composed, decomposed)
 
     def test_case_only_names_remain_distinct_on_a_case_sensitive_volume(self):
         """Case folding for invalidation must follow the filesystem, not OS."""
@@ -3378,11 +3378,7 @@ class TestThePayloadCacheCannotServeStaleData(PayloadCacheTestCase):
         self.assertTrue(dashboard_data._PAYLOAD_CACHE)
         self.assertIsNotNone(dashboard_data._VERSION_PROBE)
 
-        path.unlink()
-        self.assertIn("error", get_dashboard_data(aliased_parent / "123"))
-
-        self.assertEqual(dashboard_data._PAYLOAD_CACHE, {})
-        self.assertIsNone(dashboard_data._VERSION_PROBE)
+        self._assert_alias_reopen_failure_invalidates(path, aliased_parent / "123")
 
     def test_component_alias_proof_crosses_a_mount_device_boundary(self):
         """A mount point's spelling belongs to its parent filesystem."""

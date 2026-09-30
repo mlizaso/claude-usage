@@ -15,6 +15,7 @@ import re
 import socket
 import sys
 import threading
+import time
 import urllib.request
 from urllib.parse import urlparse
 
@@ -281,12 +282,28 @@ class LoopbackHTTPServer(http.server.ThreadingHTTPServer):
                 b"Content-Length: " + str(len(body)).encode("ascii")
                 + b"\r\n\r\n" + body
             )
+            # Send the refusal before reading, then briefly drain incoming
+            # bytes after the write-side shutdown. Closing with unread bytes
+            # can reset the connection and discard the 503 on Windows. Both
+            # time and bytes are bounded: overload must not stall the accept
+            # loop behind a silent or drip-feeding peer.
+            deadline = time.monotonic() + 0.1
             try:
+                request.settimeout(0.1)
                 request.sendall(response)
+                request.shutdown(socket.SHUT_WR)
+                remaining = 65536
+                while remaining:
+                    left = deadline - time.monotonic()
+                    if left <= 0:
+                        break
+                    request.settimeout(left)
+                    chunk = request.recv(min(remaining, 8192))
+                    if not chunk:
+                        break
+                    remaining -= len(chunk)
             except OSError:
                 pass
-            # TCPServer shuts down the write side before closing. A direct
-            # close with unread request bytes can discard the 503 on Windows.
             self.shutdown_request(request)
             return
         try:

@@ -1280,6 +1280,31 @@ class TestConnectionLimits(unittest.TestCase):
                       status_line(raw_request(self.port, "GET", "/healthz")),
                       "the slot was never returned")
 
+    def test_a_late_request_does_not_erase_the_overload_response(self):
+        slots = self.server._request_slots
+        held = 0
+        try:
+            while slots.acquire(blocking=False):
+                held += 1
+            with socket.create_connection(("127.0.0.1", self.port), timeout=2) as client:
+                # First prove that the refusal was sent without waiting for
+                # request bytes. Then deliver the request during the close.
+                response = client.recv(1)
+                self.assertEqual(response, b"H")
+                client.sendall(b"GET /healthz HTTP/1.1\r\nHost: localhost\r\n\r\n")
+                while True:
+                    chunk = client.recv(65536)
+                    if not chunk:
+                        break
+                    response += chunk
+            self.assertIn(b"503 Service Unavailable", status_line(response))
+            self.assertEqual(json.loads(response.split(b"\r\n\r\n", 1)[1]), {
+                "error": "Too many concurrent connections; retry shortly",
+            })
+        finally:
+            for _ in range(held):
+                slots.release()
+
     def test_a_peer_that_connects_and_says_nothing_is_dropped(self):
         """0.3s of silence stands in for 15s of it, the same way the proxy's
         idle-timeout test stands in for thirty seconds."""

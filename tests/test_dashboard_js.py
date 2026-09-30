@@ -8090,7 +8090,7 @@ class TestDailyPanelGeometryInABrowser(unittest.TestCase):
         # One more, with deliberately oversized figures, so a value exists that
         # no fixed column width could hold. That is what the containment rule is
         # for, and without a case that overflows nothing would exercise it.
-        cls.overflowing = _measure_in_browser(1280, scale=1000000)
+        cls.overflowing = _measure_in_browser(1280, scale=100000000)
 
     def test_the_page_never_scrolls_sideways(self):
         """A page-wide horizontal scrollbar is a regression for every card on
