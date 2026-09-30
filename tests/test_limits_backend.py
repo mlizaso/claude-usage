@@ -940,11 +940,13 @@ class TestTheSmallServerBoundsConnections(unittest.TestCase):
             ("127.0.0.1", 0), limits_server.LimitsHandler)
         self.addCleanup(server.server_close)
         stream = io.StringIO()
-        with redirect_stderr(stream):
-            try:
-                raise BrokenPipeError("client left")
-            except BrokenPipeError:
-                server.handle_error(None, None)
+        for error in (BrokenPipeError, ConnectionResetError,
+                      ConnectionAbortedError, TimeoutError):
+            with self.subTest(error=error), redirect_stderr(stream):
+                try:
+                    raise error("client left")
+                except error:
+                    server.handle_error(None, None)
         self.assertEqual(stream.getvalue(), "")
 
     def test_the_absolute_budget_covers_a_slow_put_body(self):

@@ -9,6 +9,7 @@ drift between them.
 
 import errno
 import http.server
+import io
 import json
 import math
 import re
@@ -97,6 +98,29 @@ def call_with_total_deadline(operation, timeout):
     return True, result[0]
 
 
+class _DeadlineSocketReader(io.RawIOBase):
+    """Apply the absolute request deadline to every buffered socket read."""
+
+    def __init__(self, connection, deadline, socket_timeout):
+        super().__init__()
+        self._connection = connection
+        self._deadline = deadline
+        self._socket_timeout = socket_timeout
+
+    def readable(self):
+        return True
+
+    def readinto(self, buffer):
+        left = self._deadline - time.monotonic()
+        if left <= 0:
+            raise TimeoutError("request read deadline expired")
+        timeout = left
+        if self._socket_timeout is not None:
+            timeout = min(timeout, self._socket_timeout)
+        self._connection.settimeout(timeout)
+        return self._connection.recv_into(buffer)
+
+
 class LoopbackRequestHandlerMixin:
     """Shared request-lifecycle protection for the local HTTP handlers.
 
@@ -120,6 +144,15 @@ class LoopbackRequestHandlerMixin:
         )
         if callable(budget):
             budget = budget()
+        self._request_socket_timeout = self.connection.gettimeout()
+        # Windows may keep a timed recv inside select after another thread's
+        # shutdown. Bound the raw reads below BufferedReader too, so readline
+        # cannot retain a worker or renew the budget with each received byte.
+        self.rfile.close()
+        self.rfile = io.BufferedReader(_DeadlineSocketReader(
+            self.connection, time.monotonic() + budget,
+            self._request_socket_timeout,
+        ))
         self._request_read_finished = False
         self._watchdog_lock = threading.Lock()
         self._read_watchdog = threading.Timer(
@@ -150,6 +183,10 @@ class LoopbackRequestHandlerMixin:
                 return
             self._request_read_finished = True
             watchdog.cancel()
+            try:
+                self.connection.settimeout(self._request_socket_timeout)
+            except OSError:
+                pass
 
     def parse_request(self):
         parsed = super().parse_request()
@@ -267,7 +304,8 @@ class LoopbackHTTPServer(http.server.ThreadingHTTPServer):
         # A watchdog shutdown, a client navigating away, and a per-operation
         # socket timeout are expected connection endings, not application bugs.
         if isinstance(sys.exc_info()[1],
-                      (BrokenPipeError, ConnectionResetError, TimeoutError)):
+                      (BrokenPipeError, ConnectionResetError,
+                       ConnectionAbortedError, TimeoutError)):
             return
         super().handle_error(request, client_address)
 
