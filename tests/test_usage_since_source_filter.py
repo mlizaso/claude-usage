@@ -30,7 +30,9 @@ import db
 
 class UsageSinceFixture(unittest.TestCase):
     def setUp(self):
-        fd, self.path = tempfile.mkstemp(suffix=".db")
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmpdir.cleanup)
+        fd, self.path = tempfile.mkstemp(dir=self._tmpdir.name, suffix=".db")
         os.close(fd)
         self.conn = db.get_db(self.path)
         db.init_db(self.conn)

@@ -860,6 +860,8 @@ class TestTheSmallServerIsActuallySmall(unittest.TestCase):
         env = {"ANTHROPIC_API_KEY": "audit-key"}
         with mock.patch.object(limits_server.account, "read_config",
                                return_value=config), \
+                mock.patch.object(limits_server.limits_core, "read_thresholds",
+                                  return_value={}), \
                 mock.patch.dict(os.environ, env, clear=True):
             payload = limits_server.limits_payload()
         self.assertFalse(payload["available"])
@@ -919,11 +921,16 @@ class TestTheSmallServerBoundsConnections(unittest.TestCase):
             extra.sendall(b"GET /healthz HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
             self.assertIn(b"503 Service Unavailable", extra.recv(512))
             extra.close()
-            time.sleep(0.4)
-            conn = http.client.HTTPConnection(host, port, timeout=2)
-            conn.request("GET", "/healthz")
-            self.assertEqual(conn.getresponse().status, 200)
-            conn.close()
+            deadline = time.monotonic() + 3
+            while True:
+                conn = http.client.HTTPConnection(host, port, timeout=2)
+                conn.request("GET", "/healthz")
+                status = conn.getresponse().status
+                conn.close()
+                if status != 503 or time.monotonic() >= deadline:
+                    break
+                time.sleep(0.05)
+            self.assertEqual(status, 200, "expired partial requests did not release their slots")
         finally:
             for conn in held:
                 conn.close()
@@ -962,11 +969,12 @@ class TestTheSmallServerBoundsConnections(unittest.TestCase):
             ).encode("ascii"))
             started = time.monotonic()
             dropped = False
+            client.setblocking(False)
             while time.monotonic() - started < 3:
                 time.sleep(0.05)
                 try:
                     client.sendall(b" ")
-                    if client.recv(1, socket.MSG_DONTWAIT | socket.MSG_PEEK) == b"":
+                    if client.recv(1, socket.MSG_PEEK) == b"":
                         dropped = True
                         break
                 except BlockingIOError:

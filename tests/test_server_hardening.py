@@ -1334,6 +1334,7 @@ class TestConnectionLimits(unittest.TestCase):
                 client.sendall(b"GET /healthz HTTP/1.1\r\n")
                 started = time.monotonic()
                 dropped = False
+                client.setblocking(False)
                 # Drip a well-formed header line every 0.1s -- far inside the
                 # per-recv timeout, so only an absolute deadline can end this.
                 while time.monotonic() - started < 5.0:
@@ -1342,17 +1343,19 @@ class TestConnectionLimits(unittest.TestCase):
                     except OSError:
                         dropped = True
                         break
-                    if client.recv(1, socket.MSG_DONTWAIT | socket.MSG_PEEK) == b"":
+                    try:
+                        if client.recv(1, socket.MSG_PEEK) == b"":
+                            dropped = True
+                            break
+                    except BlockingIOError:
+                        pass
+                    except OSError:
                         dropped = True
                         break
                     time.sleep(0.1)
                 self.assertTrue(
                     dropped,
                     "a drip-feeding client held its connection slot indefinitely")
-                self.assertLess(time.monotonic() - started, 5.0)
-            except BlockingIOError:
-                # Nothing readable yet is not a failure on its own; fall through
-                # to the elapsed check below.
                 self.assertLess(time.monotonic() - started, 5.0)
             finally:
                 client.close()
@@ -1371,12 +1374,12 @@ class TestConnectionLimits(unittest.TestCase):
                 ).encode("ascii"))
                 started = time.monotonic()
                 dropped = False
+                client.setblocking(False)
                 while time.monotonic() - started < 5:
                     time.sleep(0.1)
                     try:
                         client.sendall(b" ")
-                        if client.recv(
-                                1, socket.MSG_DONTWAIT | socket.MSG_PEEK) == b"":
+                        if client.recv(1, socket.MSG_PEEK) == b"":
                             dropped = True
                             break
                     except BlockingIOError:
@@ -1518,9 +1521,8 @@ class TestTheReadRoutesOpenTheDatabaseThroughTheGuard(unittest.TestCase):
         not_a_file.mkdir(parents=True)
         for name, route in self._routes():
             with self.subTest(route=name):
-                with self.assertRaises(RuntimeError) as caught:
+                with self.assertRaises(db.UnsafeDatabasePathError):
                     route(not_a_file)
-                self.assertIn("not a regular file", str(caught.exception))
 
     @unittest.skipUnless(os.name == "posix", "POSIX inode verification only")
     def test_they_reject_a_database_replaced_after_path_validation(self):

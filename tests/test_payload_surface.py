@@ -271,7 +271,9 @@ class PayloadFixture(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        fd, path = tempfile.mkstemp(suffix=".db")
+        cls._tmpdir = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(cls._tmpdir.cleanup)
+        fd, path = tempfile.mkstemp(dir=cls._tmpdir.name, suffix=".db")
         os.close(fd)
         cls.path = Path(path)
         conn = db.get_db(cls.path)
@@ -539,7 +541,9 @@ class PopulatedPayloadFixture(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        fd, path = tempfile.mkstemp(suffix=".db")
+        cls._tmpdir = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(cls._tmpdir.cleanup)
+        fd, path = tempfile.mkstemp(dir=cls._tmpdir.name, suffix=".db")
         os.close(fd)
         cls.path = Path(path)
         conn = db.get_db(cls.path)

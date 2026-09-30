@@ -2636,6 +2636,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
         self.assertIn("port=os.environ['PORT']", dockerfile)
         self.assertIn("http://127.0.0.1:{port}/healthz", dockerfile)
 
+    @unittest.skipUnless(os.name == "posix", "Docker shell launcher needs a POSIX runtime")
     def test_launcher_rejects_ambiguous_or_unprivileged_ports_before_docker(self):
         script = ROOT / "scripts" / "run-docker.sh"
         for port in ("80", "1023", "01024", "077777", "00099999", "65536"):
@@ -2656,6 +2657,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
                         code.index('echo "✅  Running at'))
         self.assertIn("Dashboard containers started but did not become ready", code)
 
+    @unittest.skipUnless(os.name == "posix", "Docker shell launcher needs a POSIX runtime")
     def test_failed_launch_removes_only_artifacts_it_created(self):
         """A proxy-create failure must not strand the app or new networks."""
         script = ROOT / "scripts" / "run-docker.sh"
@@ -2708,6 +2710,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
                 ],
             )
 
+    @unittest.skipUnless(os.name == "posix", "Docker shell launcher needs POSIX signals")
     def test_launcher_signal_uses_the_launch_label_when_id_capture_is_cut_off(self):
         """TERM on the launcher after create cannot strand that object."""
         script = ROOT / "scripts" / "run-docker.sh"
@@ -2784,6 +2787,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
             )
             self.assertIn("Removing Docker artifacts", got.stderr)
 
+    @unittest.skipUnless(os.name == "posix", "Docker shell launcher needs a POSIX runtime")
     def test_an_image_named_like_the_app_is_not_treated_as_a_container(self):
         """The persistent image must not block the next ordinary launch."""
         script = ROOT / "scripts" / "run-docker.sh"
@@ -2828,6 +2832,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
                 calls,
             )
 
+    @unittest.skipUnless(os.name == "posix", "Docker shell launcher needs a POSIX runtime")
     def test_stopping_a_prior_managed_container_removes_its_captured_id(self):
         """A same-name replacement after inspection must not be the target."""
         script = ROOT / "scripts" / "run-docker.sh"
@@ -2872,6 +2877,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
             self.assertIn("rm --force prior-proxy-id", calls)
             self.assertNotIn("rm --force claude-usage-proxy", calls)
 
+    @unittest.skipUnless(os.name == "posix", "Docker shell launcher needs a POSIX runtime")
     def test_reused_networks_and_proxy_target_use_launch_identity(self):
         """Mutable Docker names cannot redirect attachments or proxy traffic."""
         script = ROOT / "scripts" / "run-docker.sh"
@@ -2937,6 +2943,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
             self.assertEqual(proxy_target, app_alias)
             self.assertNotEqual(proxy_target, "claude-usage")
 
+    @unittest.skipUnless(os.name == "posix", "Docker shell launcher needs a POSIX runtime")
     def test_failed_launch_uses_ids_not_names_that_can_be_replaced(self):
         """A same-name replacement must survive cleanup of this invocation."""
         script = ROOT / "scripts" / "run-docker.sh"

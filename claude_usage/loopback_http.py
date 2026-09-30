@@ -285,7 +285,9 @@ class LoopbackHTTPServer(http.server.ThreadingHTTPServer):
                 request.sendall(response)
             except OSError:
                 pass
-            request.close()
+            # TCPServer shuts down the write side before closing. A direct
+            # close with unread request bytes can discard the 503 on Windows.
+            self.shutdown_request(request)
             return
         try:
             super().process_request(request, client_address)

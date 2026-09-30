@@ -119,7 +119,7 @@ class BigBodyUpstream:
     observes the handler's real lifetime rather than a mocked exception.
     """
 
-    BODY_SIZE = 8 * 1024 * 1024
+    BODY_SIZE = 64 * 1024 * 1024
 
     def __init__(self):
         self.listener = socket.socket()
@@ -144,7 +144,9 @@ class BigBodyUpstream:
                     b"HTTP/1.0 200 OK\r\nContent-Length: %d\r\n\r\n"
                     % self.BODY_SIZE
                 )
-                connection.sendall(b"x" * self.BODY_SIZE)
+                chunk = b"x" * 65536
+                for _ in range(self.BODY_SIZE // len(chunk)):
+                    connection.sendall(chunk)
                 self.fully_sent = True
                 connection.recv(1)  # blocks until the proxy hangs up
             except OSError:

@@ -31,17 +31,14 @@ jobs:
     strategy:
       # One platform failing should not hide whether the others pass.
       fail-fast: false
-      # require-browser is the leg's answer to "does a Chrome live here that
-      # tests/test_dashboard_js.py's _find_browser() will actually find?" — see
-      # the Run tests step. "" is not "we do not care"; it is a gap the run
-      # announces.
+      # Every platform installs the same headless browser and enforces its tests.
       matrix:
         include:
           - { os: ubuntu-latest,  python-version: "3.11", require-browser: "1" }
           - { os: ubuntu-latest,  python-version: "3.12", require-browser: "1" }
           - { os: ubuntu-latest,  python-version: "3.13", require-browser: "1" }
           - { os: macos-latest,   python-version: "3.13", require-browser: "1" }
-          - { os: windows-latest, python-version: "3.13", require-browser: ""  }
+          - { os: windows-latest, python-version: "3.13", require-browser: "1" }
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -53,12 +50,25 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Announce a leg that does not enforce the browser tests
-        # A skipped guard reads as a pass, and that is the whole reason the flag
-        # below exists — so a leg that cannot set it says so in the run summary
-        # instead of leaving a green check that means less than it looks like.
-        if: matrix.require-browser != '1'
-        run: echo "::warning title=Rendered geometry is NOT enforced on ${{ matrix.os }}::CLAUDE_USAGE_REQUIRE_BROWSER is unset on this leg, so TestDailyPanelGeometryInABrowser may skip silently here. The Linux and macOS legs enforce it; this one does not."
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.18.0"
+
+      - name: Install the test browser
+        shell: bash
+        run: |
+          npx --yes @puppeteer/browsers@3.2.3 install chrome-headless-shell@154.0.8037.92 --path "$RUNNER_TEMP/browser"
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          directory = Path(os.environ["RUNNER_TEMP"]) / "browser"
+          binaries = [p for p in directory.rglob("*")
+                      if p.name in {"chrome-headless-shell", "chrome-headless-shell.exe"}
+                      and p.is_file()]
+          assert len(binaries) == 1, binaries
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as stream:
+              stream.write("CLAUDE_USAGE_CHROME=" + str(binaries[0].resolve()) + "\n")
+          PY
 
       - name: Run tests
         # ubuntu-latest ships node, so tests/test_dashboard_js.py really does
@@ -77,17 +87,8 @@ jobs:
         # and a browser that produces no measurement — either of which leaves a
         # green run that measured nothing. The flag turns both into failures.
         #
-        # It is set wherever _find_browser() genuinely finds a browser unaided:
-        # ubuntu-24.04 symlinks /usr/bin/chromium at an unpacked Chromium (no
-        # snap) and /usr/bin/google-chrome at the deb, and macos-26-arm64 has
-        # /Applications/Google Chrome.app. windows-2025 ships Chrome too, but
-        # under no name on PATH that _find_browser() looks for — that alone is
-        # why the leg is left unenforced and warns about it above rather than
-        # being wired up here. It was ALSO red for an unrelated cp1252 reason
-        # when that decision was taken, which is why the two were kept from
-        # entangling; those harness reads have since been given explicit
-        # encodings, but no run has executed the suite on Windows since, so the
-        # leg's state is unverified rather than fixed. See AGENTS.md.
+        # The pinned headless shell avoids desktop-browser startup stalls and
+        # gives Windows the same rendered-geometry coverage as Linux and macOS.
         env:
           CLAUDE_USAGE_REQUIRE_JS: "1"
           CLAUDE_USAGE_REQUIRE_BROWSER: ${{ matrix.require-browser }}

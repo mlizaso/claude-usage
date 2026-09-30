@@ -1324,7 +1324,9 @@ class TestDatabaseOperations(unittest.TestCase):
                 get_db(db_path)
 
     def setUp(self):
-        self.tmpfile = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmpdir.cleanup)
+        self.tmpfile = tempfile.NamedTemporaryFile(dir=self._tmpdir.name, suffix=".db", delete=False)
         self.tmpfile.close()
         self.db_path = Path(self.tmpfile.name)
         self.conn = get_db(self.db_path)

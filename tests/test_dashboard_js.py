@@ -1860,17 +1860,10 @@ class TestThePeakWindowFollowsPacificDaylightSaving(unittest.TestCase):
     PDT_PLACEMENT = [12, 13, 14, 15, 16, 17]
 
     def _in_tz(self, tz, snippet):
-        original = os.environ.get("TZ")
-        os.environ["TZ"] = tz
-        time.tzset()
-        try:
+        # Only the Node child interprets local dates in these cases. It reads
+        # TZ at startup on Windows too; Python's POSIX-only tzset is unnecessary.
+        with mock.patch.dict(os.environ, {"TZ": tz}):
             return run_js(snippet)
-        finally:
-            if original is None:
-                os.environ.pop("TZ", None)
-            else:
-                os.environ["TZ"] = original
-            time.tzset()
 
     def test_the_utc_window_moves_between_pst_and_pdt(self):
         got = run_js(emit("""days.map(day =>
@@ -8094,10 +8087,10 @@ class TestDailyPanelGeometryInABrowser(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.measured = {w: _measure_in_browser(w) for w in cls.WIDTHS}
-        # One more, with a bill a thousand times larger, so a figure exists that
+        # One more, with deliberately oversized figures, so a value exists that
         # no fixed column width could hold. That is what the containment rule is
         # for, and without a case that overflows nothing would exercise it.
-        cls.overflowing = _measure_in_browser(1280, scale=100000)
+        cls.overflowing = _measure_in_browser(1280, scale=1000000)
 
     def test_the_page_never_scrolls_sideways(self):
         """A page-wide horizontal scrollbar is a regression for every card on

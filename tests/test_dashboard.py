@@ -47,7 +47,9 @@ from dashboard import (
 
 class TestGetDashboardData(unittest.TestCase):
     def setUp(self):
-        self.tmpfile = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmpdir.cleanup)
+        self.tmpfile = tempfile.NamedTemporaryFile(dir=self._tmpdir.name, suffix=".db", delete=False)
         self.tmpfile.close()
         self.db_path = Path(self.tmpfile.name)
         conn = get_db(self.db_path)
@@ -205,7 +207,9 @@ class TestEmptyStringModelNormalization(unittest.TestCase):
     NULLIF(model, '') is needed first."""
 
     def setUp(self):
-        self.tmpfile = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmpdir.cleanup)
+        self.tmpfile = tempfile.NamedTemporaryFile(dir=self._tmpdir.name, suffix=".db", delete=False)
         self.tmpfile.close()
         self.db_path = Path(self.tmpfile.name)
         conn = get_db(self.db_path)
@@ -256,7 +260,9 @@ class TestMixedNullAndEmptyModel(unittest.TestCase):
     SQLite groups by raw value and emits two distinct 'unknown' rows."""
 
     def setUp(self):
-        self.tmpfile = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmpdir.cleanup)
+        self.tmpfile = tempfile.NamedTemporaryFile(dir=self._tmpdir.name, suffix=".db", delete=False)
         self.tmpfile.close()
         self.db_path = Path(self.tmpfile.name)
         conn = get_db(self.db_path)
@@ -1569,9 +1575,12 @@ class TestUrlFileRecovery(unittest.TestCase):
         dashboard.write_url_file("127.0.0.1", _unused_port(), self.path)
         self.assertIsNotNone(dashboard.read_url_file(self.path),
                              "the file is there; the question is whether it works")
-        self.assertIs(dashboard.url_is_live(dashboard.read_url_file(self.path),
-                                            timeout=0.4), False,
-                      "a refused connection is proof of death, not a failed probe")
+        # A closed port can take longer than a short probe budget to refuse.
+        # Test a delivered refusal without assuming the OS's scheduling.
+        with mock.patch.object(dashboard, "open_loopback_probe",
+                               side_effect=ConnectionRefusedError("fixture refusal")):
+            self.assertIs(dashboard.url_is_live(dashboard.read_url_file(self.path)), False,
+                          "a refused connection is proof of death, not a failed probe")
 
     def test_a_probe_that_could_not_tell_says_so(self):
         """A failed probe is not evidence of a dead server.
@@ -1950,7 +1959,9 @@ class TestUrlFileRecovery(unittest.TestCase):
         links to servers that are not there."""
         import dashboard
         dashboard.write_url_file("127.0.0.1", _unused_port(), self.path)
-        code, output, opened = self._run_cmd_url(open_browser=True)
+        with mock.patch.object(dashboard, "open_loopback_probe",
+                               side_effect=ConnectionRefusedError("fixture refusal")):
+            code, output, opened = self._run_cmd_url(open_browser=True)
         self.assertEqual(code, 1)
         self.assertIn("No running dashboard", output)
         self.assertNotIn("#token=", output, "a dead link was printed anyway")
@@ -2703,6 +2714,7 @@ class PayloadCacheTestCase(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.db_path = Path(self._tmp.name) / "usage.db"
+        self.addCleanup(self._tmp.cleanup)
         self._seed(self.db_path)
         patcher = mock.patch.object(
             dashboard_data, "PAYLOAD_CACHE_MIN_BUILD_SECONDS", 0.0)
@@ -2712,7 +2724,6 @@ class PayloadCacheTestCase(unittest.TestCase):
         # found them; an entry surviving into another test would be a cross-test
         # dependency in the one mechanism whose whole risk is serving stale data.
         self.addCleanup(dashboard_data.reset_payload_cache)
-        self.addCleanup(self._tmp.cleanup)
         dashboard_data.reset_payload_cache()
 
     @staticmethod
@@ -3018,6 +3029,7 @@ class TestThePayloadCacheCannotServeStaleData(PayloadCacheTestCase):
         self.assertIn("committed-between-sections",
                       self._session_ids(get_dashboard_data(self.db_path)))
 
+    @unittest.skipUnless(os.name == "posix", "overwriting an open database is POSIX-only")
     def test_a_database_replaced_in_place_is_not_served_from_the_old_one(self):
         """Copied OVER, not unlinked and rebuilt.
 

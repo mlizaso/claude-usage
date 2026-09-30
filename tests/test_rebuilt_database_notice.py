@@ -100,15 +100,17 @@ def _make_foreign(path):
 
 class _DatabaseFixture(unittest.TestCase):
     def setUp(self):
-        fd, path = tempfile.mkstemp(suffix=".db")
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmpdir.cleanup)
+        fd, path = tempfile.mkstemp(dir=self._tmpdir.name, suffix=".db")
         os.close(fd)
         self.path = Path(path)
         # The assembled-payload cache keys on (file identity, commit counter),
         # and these tests reuse one path across states. Start and end clean so a
         # neighbour's entry can never answer for this one.
         dashboard_data.reset_payload_cache()
-        self.addCleanup(dashboard_data.reset_payload_cache)
         self.addCleanup(self._unlink)
+        self.addCleanup(dashboard_data.reset_payload_cache)
 
     def _unlink(self):
         for suffix in ("", "-wal", "-shm"):

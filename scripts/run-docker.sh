@@ -128,7 +128,8 @@ created_container_ref() {
   local id="$1" name="$2" may_have_created="$3" details object_id owner
   if [[ -n "$id" ]]; then
     printf '%s' "$id"
-    return
+    # A bare return in an EXIT trap can inherit the failed launch's status.
+    return 0
   fi
   [[ "$may_have_created" == true ]] || return 1
   details="$(docker container inspect --format \
@@ -145,7 +146,7 @@ created_network_ref() {
   local id="$1" name="$2" may_have_created="$3" details object_id owner
   if [[ -n "$id" ]]; then
     printf '%s' "$id"
-    return
+    return 0
   fi
   [[ "$may_have_created" == true ]] || return 1
   details="$(docker network inspect --format \

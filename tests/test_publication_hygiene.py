@@ -104,10 +104,10 @@ class TestPublicationHygiene(unittest.TestCase):
         self.assertEqual('0', payload['live_limits'])
 
     def test_local_data_is_ignored_but_example_env_is_shareable(self):
-        result = _git("check-ignore", "--no-index", "--stdin",
-                      input_text="\n".join(PRIVATE_EXAMPLES) + "\n")
+        result = _git("check-ignore", "--no-index", "--stdin", "-z",
+                      input_text="\0".join(PRIVATE_EXAMPLES) + "\0")
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual(set(PRIVATE_EXAMPLES), set(result.stdout.splitlines()))
+        self.assertEqual(set(PRIVATE_EXAMPLES), set(filter(None, result.stdout.split("\0"))))
         example = _git("check-ignore", "--no-index", ".env.example")
         self.assertEqual(1, example.returncode, example.stderr)
 

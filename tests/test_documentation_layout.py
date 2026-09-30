@@ -139,7 +139,7 @@ class TestDocumentationLayout(unittest.TestCase):
             with self.subTest(path=rel):
                 path = ROOT / rel
                 self.assertTrue(path.is_symlink(), f"{rel} must be a symlink")
-                self.assertEqual(target, os.readlink(path))
+                self.assertEqual(Path(target), Path(os.readlink(path)))
                 self.assertTrue(path.resolve().is_file())
                 self.assertTrue(path.resolve().is_relative_to(DOCS.resolve()))
 
@@ -147,7 +147,7 @@ class TestDocumentationLayout(unittest.TestCase):
             with self.subTest(asset=rel):
                 path = ROOT / rel
                 self.assertTrue(path.is_symlink(), f"{rel} must be a symlink")
-                self.assertEqual(target, os.readlink(path))
+                self.assertEqual(Path(target), Path(os.readlink(path)))
                 self.assertTrue(path.resolve().is_file())
 
     def test_each_document_declares_its_actual_function_and_status(self):
