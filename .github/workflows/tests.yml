@@ -1,6 +1,7 @@
 name: Tests
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
   push:
@@ -24,10 +25,8 @@ jobs:
     # with PYTHONUTF8 here: it would green the runner in one line while leaving
     # every Windows user running the suite exactly as broken.
     #
-    # Deliberately not a full 3x3 grid. Windows minutes bill at 2x and macOS at
-    # 10x, and the thing being checked on those two is that the code RUNS on
-    # them at all, which one interpreter answers as well as three. Python
-    # version coverage stays on Linux, where it is cheap.
+    # Standard hosted runners are free for this public repository. Linux covers
+    # the supported Python versions; macOS and Windows cover platform behavior.
     runs-on: ${{ matrix.os }}
     strategy:
       # One platform failing should not hide whether the others pass.

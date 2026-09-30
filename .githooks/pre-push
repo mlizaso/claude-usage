@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+
+repository=$(git rev-parse --show-toplevel)
+if command -v python3 >/dev/null 2>&1; then
+    interpreter=python3
+else
+    interpreter=python
+fi
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+    # Deleting a remote reference publishes no objects.
+    case "$local_sha" in
+        0000000000000000000000000000000000000000) continue ;;
+    esac
+    "$interpreter" "$repository/scripts/check-publication.py" "$local_sha"
+done

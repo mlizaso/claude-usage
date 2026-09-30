@@ -8,7 +8,7 @@ credential, email address or private project name has disappeared.
 
 - Review tracked files, commit messages, author/committer metadata and tags.
 - Scan the proposed public history for credentials using a dedicated scanner
-  such as TruffleHog. Use offline detection when validating suspected secrets
+  such as Gitleaks. Use offline detection when validating suspected secrets
   would send them to an external service. Review false positives privately.
 - Inspect images visually and remove EXIF/text metadata. Use synthetic data.
 - Exclude local databases, exports, transcripts, credentials, editor state,
@@ -24,6 +24,34 @@ Check every intermediate public commit, because later deletions do not hide it.
 Keep the original history in a **private local backup**. Publish only the
 reviewed branch with an explicit refspec. Do not use `git push --mirror`,
 `--all` or `--tags`: those can copy old private refs into the public repository.
+
+## Checks before pushing
+
+Install Gitleaks, then enable this checkout's pre-push hook:
+
+```bash
+git config core.hooksPath .githooks
+python3 scripts/check-publication.py
+```
+
+The hook checks each commit or tag being pushed, including deleted files in its
+history. It rejects histories with a root other than the reviewed public import,
+private file paths and detected secrets. It fails if Gitleaks is unavailable.
+The scanner can be on `PATH` or installed privately as `.git/tools/gitleaks`
+(`gitleaks.exe` on Windows). Install hooks separately in each new clone; inspect
+any existing hooks before changing `core.hooksPath`.
+
+`.gitignore` prevents ordinary additions of local data, but cannot protect files
+already committed or added with `git add -f`. The shared publication checker
+also runs in GitHub Actions with a pinned, checksum-verified Gitleaks release.
+Its sole scanner exception matches the exact synthetic token in the CLI test.
+Reports redact detected secrets. These checks complement GitHub push protection;
+they cannot identify every private name, screenshot or novel credential format.
+Review the actual staged changes before committing.
+
+Standard GitHub-hosted runners are free for public repositories; larger runners
+and other metered services have separate billing rules. See
+[GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions).
 
 ## Existing GitHub repositories
 

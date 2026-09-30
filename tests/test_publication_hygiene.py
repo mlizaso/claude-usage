@@ -2,6 +2,7 @@
 
 import json
 import os
+import runpy
 import struct
 import subprocess
 import sys
@@ -13,6 +14,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
+PUBLICATION = runpy.run_path(str(ROOT / "scripts/check-publication.py"))
 PRIVATE_EXAMPLES = (
     ".env", ".env.local", ".env.production", "nested/.env",
     "usage.db", "usage.db-wal", "usage.db-shm", "cache.sqlite3",
@@ -23,6 +25,11 @@ PRIVATE_EXAMPLES = (
     ".agents/local.json", ".vscode/settings.json",
     "usage.db.docker-transcripts/container/session.jsonl",
     "usage.db.dashboard-codex.json", "extension.vsix",
+    ".claude.json", ".claude.json.backup", "auth.json", "nested/auth.json",
+    "credentials.json", ".npmrc", ".pypirc", ".netrc", "_netrc",
+    ".git-credentials", ".ssh/id_ed25519", ".aws/credentials",
+    "cache.sqlite3-wal", "cache.sqlite-shm", "usage.db-journal",
+    "usage.db.dashboard-claude.json", ".dashboard-snapshot-temporary",
 )
 
 
@@ -109,14 +116,52 @@ class TestPublicationHygiene(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         private = []
         for name in filter(None, result.stdout.split("\0")):
-            path = Path(name)
-            if (set(path.parts) & {".claude", ".codex", ".agents", ".vscode", ".idea"}
-                    or path.name in {".DS_Store", "dashboard-url", ".claude.json", "auth.json"}
-                    or (path.name.startswith(".env") and path.name not in {".env.example", ".env.sample"})
-                    or path.suffix in {".db", ".sqlite", ".sqlite3", ".jsonl", ".csv", ".pem", ".key", ".p12", ".pfx", ".vsix"}
-                    or path.name.endswith((".db-wal", ".db-shm"))):
+            if PUBLICATION["is_private_path"](name):
                 private.append(name)
         self.assertEqual([], private, "private artifacts must not be committed")
+
+    def test_publication_policy_covers_private_paths_without_rejecting_source(self):
+        for name in PRIVATE_EXAMPLES:
+            with self.subTest(private_path=name):
+                self.assertTrue(PUBLICATION["is_private_path"](name))
+        for name in (".env.example", "nested/.env.sample", "claude_usage/db.py",
+                     "vscode-extension/package-lock.json", "docs/PRIVACY.md"):
+            with self.subTest(public_path=name):
+                self.assertFalse(PUBLICATION["is_private_path"](name))
+
+    def test_deleted_private_files_remain_blocked_in_history(self):
+        with tempfile.TemporaryDirectory() as name:
+            repository = Path(name)
+
+            def git(*args):
+                return subprocess.run(
+                    ["git", "-C", str(repository), "-c", "user.name=Synthetic",
+                     "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false",
+                     "-c", "core.hooksPath=" + str(repository / "no-hooks"), *args],
+                    capture_output=True, text=True, encoding="utf-8", check=True,
+                )
+
+            git("init")
+            (repository / "usage.db").write_bytes(b"invented usage, not a database")
+            git("add", "usage.db")
+            git("commit", "-m", "test: add synthetic private fixture")
+            git("rm", "usage.db")
+            git("commit", "-m", "test: remove fixture")
+            self.assertEqual(["usage.db"],
+                             PUBLICATION["private_history_paths"](repository, "HEAD"))
+            with self.assertRaisesRegex(ValueError, "unreviewed root"):
+                PUBLICATION["check_history"](repository, "HEAD")
+
+    def test_missing_scanner_blocks_publication(self):
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as name:
+            repository = Path(name)
+            with mock.patch.dict(PUBLICATION["find_scanner"].__globals__,
+                                 {"git": lambda *args: b".git\n"}):
+                with mock.patch("shutil.which", return_value=None):
+                    with self.assertRaisesRegex(ValueError, "Gitleaks is required"):
+                        PUBLICATION["find_scanner"](repository)
 
     def test_distributed_images_have_no_exif_or_text_metadata(self):
         paths = list((ROOT / "docs").glob("*.png"))

@@ -1,0 +1,11 @@
+title = "Public source secret scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Literal synthetic loopback token used by the CLI output test"
+condition = "AND"
+paths = ['''^tests/test_cli\.py$''']
+regexTarget = "secret"
+regexes = ['''^0123456789abcdef$''']

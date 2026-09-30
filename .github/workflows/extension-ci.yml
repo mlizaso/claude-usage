@@ -12,6 +12,7 @@ name: VS Code extension tests
 # a symlink, so its target must be named too: changing a symlink target does not
 # change the symlink path.
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:

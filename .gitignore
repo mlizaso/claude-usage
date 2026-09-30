@@ -7,6 +7,17 @@ Desktop.ini
 .env.*
 !.env.example
 !.env.sample
+.claude.json
+.claude.json.*
+auth.json
+credentials.json
+.npmrc
+.pypirc
+.netrc
+_netrc
+.git-credentials
+.ssh/
+.aws/
 *.pem
 *.key
 *.p12
