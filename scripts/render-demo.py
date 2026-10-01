@@ -106,7 +106,8 @@ def render(browser, output):
         pages = {}
         for view in ('overview', 'charts', 'tables'):
             probe = """<script nonce="demo">
-            document.documentElement.dataset.theme = 'light';
+            localStorage.setItem('claude-usage-theme', 'light');
+            applyTheme('light');
             let attempts = 0;
             function settleDemo() {
               if (!document.querySelector('#model-cost-body tr')) {
@@ -124,13 +125,11 @@ def render(browser, output):
             </script>"""
             # Focus the documentation on existing rendered cards without scroll
             # timing or modifying their values. The source UI stays unchanged.
-            focus = ''
-            if view != 'overview':
-                focus = 'header,.controls,#jump-bar,#stats-row {display:none!important}'
+            focus = 'footer {display:none!important}'
             if view == 'charts':
-                focus += '.table-card,#sec-subagents {display:none!important}'
+                focus += 'header,#jump-bar,#stats-row,.table-card,#sec-subagents {display:none!important}'
             if view == 'tables':
-                focus += '.charts-grid,.table-card:not(#sec-cost-model):not(#sec-cost-effort) {display:none!important}'
+                focus += '#jump-bar,#stats-row,.charts-grid,.table-card:not(#sec-cost-model):not(#sec-cost-effort) {display:none!important}'
             focused = page.replace('</head>', '<style>' + focus + '</style></head>')
             pages['/' + view] = focused.replace('</body>', probe + '</body>').encode('utf-8')
         chart = (ROOT / 'vendor/chart.umd.js').read_bytes()
@@ -178,14 +177,16 @@ def render(browser, output):
         worker = threading.Thread(target=server.serve_forever, daemon=True)
         worker.start()
         try:
-            for view, filename in (('overview', 'screenshot.png'), ('charts', 'usage1.png'), ('tables', 'usage2.png')):
+            for view, filename, height in (('overview', 'screenshot.png', 915),
+                                           ('charts', 'usage1.png', 1080),
+                                           ('tables', 'usage2.png', 890)):
                 url = f'http://127.0.0.1:{server.server_port}/{view}?source=claude&range=all#token=' + 'd' * 40
                 result = subprocess.run([
                     str(browser), '--headless', '--disable-gpu', '--no-sandbox',
                     '--disable-background-networking', '--no-first-run',
                     '--disable-sync', '--hide-scrollbars', '--force-device-scale-factor=1',
                     '--user-data-dir=' + str(temporary / ('profile-' + view)),
-                    '--window-size=1440,1080', '--virtual-time-budget=15000',
+                    f'--window-size=1440,{height}', '--virtual-time-budget=15000',
                     '--screenshot=' + str(output / filename), '--dump-dom', url,
                 ], capture_output=True, text=True, encoding='utf-8', timeout=60)
                 if result.returncode or 'data-demo-ready="true"' not in result.stdout:

@@ -13,10 +13,40 @@ subagents, and quota windows. Use it in your browser or inside VS Code.
 Optional live Anthropic quota queries require explicit opt-in and credentials.
 See [Privacy](PRIVACY.md) for the data stored locally and the network boundary.
 
-![Dashboard with synthetic demonstration data](screenshot.png)
+## Screenshots
 
-*The screenshots use invented projects and usage figures. They are examples,
-not a record of anyone's account or spending.*
+Two views of the dashboard using **invented demonstration data**. Click either
+image to open it at full size.
+
+### Usage at a glance
+
+Sessions, tokens, cache usage and an API-equivalent cost estimate, followed by
+the daily usage chart. Use the model and date filters to explore a period.
+
+[![Light dashboard showing usage totals and a daily token chart with synthetic data](https://raw.githubusercontent.com/mlizaso/claude-usage/main/docs/screenshot.png)](https://raw.githubusercontent.com/mlizaso/claude-usage/main/docs/screenshot.png)
+
+### Cost breakdown
+
+Compare input, output and cache costs by model and reasoning effort. These
+figures are estimates from the bundled rate tables, not an account bill.
+
+[![Dashboard showing token counts and estimated costs by model and reasoning effort with synthetic data](https://raw.githubusercontent.com/mlizaso/claude-usage/main/docs/usage2.png)](https://raw.githubusercontent.com/mlizaso/claude-usage/main/docs/usage2.png)
+
+**What you can see:** usage totals, charts and metadata such as project names,
+branches and session titles. These examples show Claude Code; Codex has its own
+source view.
+
+**What you cannot see:** full prompts, responses or source-code contents in the
+dashboard. It is not a conversation viewer, a billing statement or an account-wide
+history of activity missing from local logs. Quota panels appear only when
+supported readings are available; this demo contains none.
+
+All session IDs, project names and usage figures in these images are invented.
+Real screenshots can reveal private work through their metadata; see
+[Privacy](PRIVACY.md) before sharing your own.
+
+<details>
+<summary>Regenerate the screenshots safely</summary>
 
 The fixtures and capture process are preserved in `scripts/render-demo.py`.
 It inserts 90 invented sessions into a temporary database, blocks real usage
@@ -25,6 +55,8 @@ paths, and renders the page with a fresh browser profile in UTC. To regenerate:
 ```bash
 python3 scripts/render-demo.py --browser /path/to/chrome-headless-shell
 ```
+
+</details>
 
 ## Quick Start
 
@@ -227,9 +259,6 @@ Thresholds are saved locally for each quota window.
 
 An independent quota page is available with `python3 limits_server.py`;
 it does not open the usage database. See [Limits backend](LIMITS-BACKEND.md).
-
-![Example charts with synthetic data](usage1.png)
-![Example cost tables with synthetic data](usage2.png)
 
 ### Security and privacy
 
