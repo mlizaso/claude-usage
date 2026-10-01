@@ -55,16 +55,26 @@ class TestPublicationHygiene(unittest.TestCase):
                             raise AssertionError('demo accessed an inherited data path')
             sys.addaudithook(refuse_private_paths)
             demo = runpy.run_path(str(root / 'scripts/render-demo.py'))
-            _, data = demo['build_payload'](directory)
-            payload = json.loads(data)
-            sessions = payload['sessions_all']
+            _, payloads, sources = demo['build_payloads'](directory)
+            summaries = {}
+            for source, data in payloads.items():
+                payload = json.loads(data)
+                sessions = payload['sessions_all']
+                summaries[source] = {
+                    'sessions': len(sessions),
+                    'ids': sorted(row['session_id'] for row in sessions),
+                    'sources': sorted({row['source'] for row in sessions}),
+                    'models': payload['all_models'],
+                    'projects': sorted({row['project'] for row in sessions}),
+                    'claude_limits': payload['subscription_limits'],
+                    'codex_limits': payload['codex_limits'],
+                    'generated_at': payload['generated_at'],
+                    'reasoning': sum(row['reasoning'] for row in payload['effort_by_day_model']),
+                    'output': sum(row['output'] for row in payload['effort_by_day_model']),
+                }
             print(json.dumps({
-                'sessions': len(sessions),
-                'ids': sorted(row['session_id'] for row in sessions),
-                'projects': sorted({row['project'] for row in sessions}),
-                'claude_limits': payload['subscription_limits'],
-                'codex_limits': payload['codex_limits'],
-                'generated_at': payload['generated_at'],
+                'payloads': summaries,
+                'source_response': json.loads(sources),
                 'rates_override': os.environ.get('CLAUDE_USAGE_RATES'),
                 'docker': os.environ['CLAUDE_USAGE_DOCKER'],
                 'live_limits': os.environ['CLAUDE_USAGE_LIVE_LIMITS'],
@@ -92,13 +102,29 @@ class TestPublicationHygiene(unittest.TestCase):
             )
         self.assertEqual(0, result.returncode, result.stderr)
         payload = json.loads(result.stdout)
-        self.assertEqual(90, payload['sessions'])
-        self.assertEqual(sorted(f'demo-{day}-{model}' for day in range(30) for model in range(3)),
-                         payload['ids'])
-        self.assertEqual(['demo/library', 'demo/mobile-app', 'demo/website'], payload['projects'])
-        self.assertEqual({}, payload['claude_limits'])
-        self.assertEqual({}, payload['codex_limits'])
-        self.assertEqual('2026-01-30 18:00:00', payload['generated_at'])
+        self.assertEqual({'claude', 'codex'}, set(payload['payloads']))
+        self.assertEqual({'sources'}, set(payload['source_response']))
+        self.assertCountEqual([{'source': 'claude', 'turns': 90},
+                               {'source': 'codex', 'turns': 90}],
+                              payload['source_response']['sources'])
+        for source, data in payload['payloads'].items():
+            with self.subTest(source=source):
+                self.assertEqual(90, data['sessions'])
+                self.assertEqual(sorted(f'demo-{source}-{day}-{model}'
+                                        for day in range(30) for model in range(3)),
+                                 data['ids'])
+                self.assertEqual([source], data['sources'])
+                self.assertTrue(data['models'])
+                prefix = 'claude-' if source == 'claude' else 'gpt-'
+                self.assertTrue(all(model.startswith(prefix) for model in data['models']))
+                self.assertEqual(['demo/library', 'demo/mobile-app', 'demo/website'],
+                                 data['projects'])
+                self.assertEqual({}, data['claude_limits'])
+                self.assertEqual({}, data['codex_limits'])
+                self.assertEqual('2026-01-30 18:00:00', data['generated_at'])
+                self.assertLessEqual(data['reasoning'], data['output'])
+        self.assertEqual(0, payload['payloads']['claude']['reasoning'])
+        self.assertGreater(payload['payloads']['codex']['reasoning'], 0)
         self.assertIsNone(payload['rates_override'])
         self.assertEqual('0', payload['docker'])
         self.assertEqual('0', payload['live_limits'])

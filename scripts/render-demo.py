@@ -18,13 +18,13 @@ from datetime import date, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from unittest.mock import patch
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def build_payload(directory):
+def build_payloads(directory):
     """Build a fixture database directly; never discover or parse transcripts."""
     for key in tuple(os.environ):
         if key.startswith('CLAUDE_USAGE_'):
@@ -51,44 +51,58 @@ def build_payload(directory):
     database = directory / 'demo.db'
     connection = get_db(database)
     init_db(connection)
-    models = ('claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-4-5-20251001')
+    models_by_source = {
+        'claude': ('claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-4-5-20251001'),
+        'codex': ('gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini'),
+    }
     projects = ('demo/website', 'demo/mobile-app', 'demo/library')
-    for day in range(30):
-        for model_index, model in enumerate(models):
-            stamp = (date(2026, 1, 1) + timedelta(days=day)).isoformat()
-            stamp += f'T{9 + model_index * 3:02}:00:00Z'
-            identity = f'demo-{day}-{model_index}'
-            factor = 1 + (day * 7 + model_index * 3) % 11
-            tokens = {'input_tokens': 20000 * factor,
-                      'output_tokens': 3000 * factor,
-                      'cache_read_tokens': 50000 * factor,
-                      'cache_creation_tokens': 4000 * factor}
-            upsert_sessions(connection, [{
-                'session_id': identity, 'source': 'claude',
-                'project_name': projects[model_index], 'git_branch': 'demo',
-                'topic': 'Synthetic demonstration', 'model': model,
-                'first_timestamp': stamp, 'last_timestamp': stamp,
-                'total_input_tokens': tokens['input_tokens'],
-                'total_output_tokens': tokens['output_tokens'],
-                'total_cache_read': tokens['cache_read_tokens'],
-                'total_cache_creation': tokens['cache_creation_tokens'],
-                'turn_count': 1,
-            }])
-            insert_turns(connection, [{
-                'session_id': identity, 'message_id': identity,
-                'source': 'claude', 'timestamp': stamp, 'model': model,
-                'reasoning_effort': ('medium', 'high', 'max')[model_index],
-                'stop_reason': 'end_turn', 'tool_name': None,
-                'cwd': '/synthetic/demo', **tokens,
-            }])
+    for source, models in models_by_source.items():
+        for day in range(30):
+            for model_index, model in enumerate(models):
+                stamp = (date(2026, 1, 1) + timedelta(days=day)).isoformat()
+                stamp += f'T{9 + model_index * 3:02}:00:00Z'
+                identity = f'demo-{source}-{day}-{model_index}'
+                factor = 1 + (day * 7 + model_index * 3) % 11
+                tokens = {'input_tokens': 20000 * factor,
+                          'output_tokens': 3000 * factor,
+                          'cache_read_tokens': 50000 * factor,
+                          'cache_creation_tokens': 4000 * factor}
+                if source == 'codex':
+                    tokens = {'input_tokens': 12000 * factor,
+                              'output_tokens': 5000 * factor,
+                              'cache_read_tokens': 35000 * factor,
+                              'cache_creation_tokens': 0,
+                              'reasoning_output_tokens': 2000 * factor}
+                upsert_sessions(connection, [{
+                    'session_id': identity, 'source': source,
+                    'project_name': projects[model_index], 'git_branch': 'demo',
+                    'topic': 'Synthetic demonstration', 'model': model,
+                    'first_timestamp': stamp, 'last_timestamp': stamp,
+                    'total_input_tokens': tokens['input_tokens'],
+                    'total_output_tokens': tokens['output_tokens'],
+                    'total_cache_read': tokens['cache_read_tokens'],
+                    'total_cache_creation': tokens['cache_creation_tokens'],
+                    'turn_count': 1,
+                }])
+                insert_turns(connection, [{
+                    'session_id': identity, 'message_id': identity,
+                    'source': source, 'timestamp': stamp, 'model': model,
+                    'reasoning_effort': ('medium', 'high', 'xhigh' if source == 'codex' else 'max')[model_index],
+                    'stop_reason': 'end_turn' if source == 'claude' else '',
+                    'tool_name': None, 'cwd': '/synthetic/demo', **tokens,
+                }])
     connection.commit()
     connection.close()
     # No account cache, saved quotas, thresholds or live credentials are read.
+    payloads = {}
     with patch.object(dashboard_data, 'claude_limits', return_value={}), \
             patch.object(dashboard_data, 'codex_limits_projection', return_value={}):
-        payload = dashboard_data.get_dashboard_data(database, source='claude')
-    payload['generated_at'] = '2026-01-30 18:00:00'
-    return dashboard.HTML_TEMPLATE, json.dumps(payload, default=str).encode('utf-8')
+        for source in models_by_source:
+            payload = dashboard_data.get_dashboard_data(database, source=source)
+            payload['generated_at'] = '2026-01-30 18:00:00'
+            payloads[source] = json.dumps(payload, default=str).encode('utf-8')
+    sources = {'sources': dashboard_data.available_sources(database)}
+    return dashboard.HTML_TEMPLATE, payloads, json.dumps(sources).encode('utf-8')
 
 
 def render(browser, output):
@@ -99,7 +113,7 @@ def render(browser, output):
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='claude-usage-demo-') as name:
         temporary = Path(name)
-        page, payload = build_payload(temporary)
+        page, payloads, sources = build_payloads(temporary)
         config = json.dumps({'version': '1.7.0 demo', 'surface': 'web', 'rate_overrides': {}})
         page = page.replace('__APP_CONFIG_JSON__', config).replace('__CSP_NONCE__', 'demo')
         # The fixture contains no subscription or Docker data. Never enable scans.
@@ -108,10 +122,25 @@ def render(browser, output):
             probe = """<script nonce="demo">
             localStorage.setItem('claude-usage-theme', 'light');
             applyTheme('light');
+            const demoSource = '__DEMO_SOURCE__';
             let attempts = 0;
             function settleDemo() {
+              if (++attempts > 200) return;
+              const sourceSwitch = document.getElementById('source-switch');
+              if (!sourceSwitch || sourceSwitch.hidden ||
+                  sourceSwitch.querySelectorAll('[data-source]').length !== 2 ||
+                  !rawData || renderedSource !== selectedSource) {
+                setTimeout(settleDemo, 25);
+                return;
+              }
+              // Use the application's real source button for the Codex capture.
+              if (selectedSource !== demoSource) {
+                sourceSwitch.querySelector('[data-source="' + demoSource + '"]').click();
+                setTimeout(settleDemo, 25);
+                return;
+              }
               if (!document.querySelector('#model-cost-body tr')) {
-                if (++attempts < 200) setTimeout(settleDemo, 25);
+                setTimeout(settleDemo, 25);
                 return;
               }
               document.title = 'Synthetic demonstration';
@@ -119,10 +148,12 @@ def render(browser, output):
               marker.textContent = 'SYNTHETIC DEMONSTRATION · INVENTED DATA';
               marker.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#0f172a;color:#fff;text-align:center;padding:8px;font:12px sans-serif';
               document.body.appendChild(marker);
+              document.documentElement.setAttribute('data-demo-source', demoSource);
               document.documentElement.setAttribute('data-demo-ready', 'true');
             }
             setTimeout(settleDemo, 100);
             </script>"""
+            probe = probe.replace('__DEMO_SOURCE__', 'codex' if view == 'tables' else 'claude')
             # Focus the documentation on existing rendered cards without scroll
             # timing or modifying their values. The source UI stays unchanged.
             focus = 'footer {display:none!important}'
@@ -134,13 +165,15 @@ def render(browser, output):
             pages['/' + view] = focused.replace('</body>', probe + '</body>').encode('utf-8')
         chart = (ROOT / 'vendor/chart.umd.js').read_bytes()
         requested = set()
+        requested_sources = set()
 
         class Handler(BaseHTTPRequestHandler):
             def log_message(self, *_args):
                 pass
 
             def do_GET(self):
-                path = urlsplit(self.path).path
+                url = urlsplit(self.path)
+                path = url.path
                 requested.add(path)
                 if path in pages:
                     body, kind = pages[path], 'text/html; charset=utf-8'
@@ -149,9 +182,14 @@ def render(browser, output):
                 elif path == '/icon.svg':
                     body, kind = (ROOT / 'web/icon.svg').read_bytes(), 'image/svg+xml'
                 elif path == '/api/data':
-                    body, kind = payload, 'application/json'
+                    source = parse_qs(url.query).get('source', ['claude'])[0]
+                    if source not in payloads:
+                        self.send_error(400)
+                        return
+                    requested_sources.add(source)
+                    body, kind = payloads[source], 'application/json'
                 elif path == '/api/sources':
-                    body, kind = b'[{"source":"claude","turns":90}]', 'application/json'
+                    body, kind = sources, 'application/json'
                 elif path == '/api/scan-status':
                     body, kind = b'{"state":"idle","generation":0}', 'application/json'
                 elif path == '/api/limits':
@@ -197,7 +235,8 @@ def render(browser, output):
             server.server_close()
             worker.join()
         assert '/api/data' in requested
-        print('Rendered 90 invented sessions; no transcripts or account caches were read.')
+        assert requested_sources == set(payloads)
+        print('Rendered 90 invented sessions per assistant; no transcripts or account caches were read.')
 
 
 if __name__ == '__main__':

@@ -15,26 +15,29 @@ See [Privacy](PRIVACY.md) for the data stored locally and the network boundary.
 
 ## Screenshots
 
-Two views of the dashboard using **invented demonstration data**. Click either
-image to open it at full size.
+Claude Code and Codex share one dashboard. When both have local history, the
+**Source → Claude Code / Codex** buttons switch between their separate views.
+Both buttons are visible in the examples below, with a different assistant
+selected in each. All data is **invented**; click an image to open it at full size.
 
-### Usage at a glance
+### Claude Code · usage at a glance
 
 Sessions, tokens, cache usage and an API-equivalent cost estimate, followed by
 the daily usage chart. Use the model and date filters to explore a period.
 
-[![Light dashboard showing usage totals and a daily token chart with synthetic data](https://raw.githubusercontent.com/mlizaso/claude-usage/main/docs/screenshot.png)](https://raw.githubusercontent.com/mlizaso/claude-usage/main/docs/screenshot.png)
+[![Claude Code selected beside the Codex source button, with synthetic usage totals and a daily token chart](https://raw.githubusercontent.com/mlizaso/claude-usage/main/docs/screenshot.png)](https://raw.githubusercontent.com/mlizaso/claude-usage/main/docs/screenshot.png)
 
-### Cost breakdown
+### Codex · costs and reasoning tokens
 
-Compare input, output and cache costs by model and reasoning effort. These
-figures are estimates from the bundled rate tables, not an account bill.
+Select **Codex** to see its GPT models, token counts, cache usage and reasoning
+breakdown. The capture below shows Codex selected while Claude Code remains
+available alongside it. Costs are estimates from the bundled rate tables, not
+an account bill; reasoning tokens are already included in output tokens.
 
-[![Dashboard showing token counts and estimated costs by model and reasoning effort with synthetic data](https://raw.githubusercontent.com/mlizaso/claude-usage/main/docs/usage2.png)](https://raw.githubusercontent.com/mlizaso/claude-usage/main/docs/usage2.png)
+[![Codex selected beside the Claude Code source button, with synthetic GPT model costs and reasoning-token counts](https://raw.githubusercontent.com/mlizaso/claude-usage/main/docs/usage2.png)](https://raw.githubusercontent.com/mlizaso/claude-usage/main/docs/usage2.png)
 
 **What you can see:** usage totals, charts and metadata such as project names,
-branches and session titles. These examples show Claude Code; Codex has its own
-source view.
+branches and session titles, scoped to the selected assistant.
 
 **What you cannot see:** full prompts, responses or source-code contents in the
 dashboard. It is not a conversation viewer, a billing statement or an account-wide
@@ -49,8 +52,10 @@ Real screenshots can reveal private work through their metadata; see
 <summary>Regenerate the screenshots safely</summary>
 
 The fixtures and capture process are preserved in `scripts/render-demo.py`.
-It inserts 90 invented sessions into a temporary database, blocks real usage
-paths, and renders the page with a fresh browser profile in UTC. To regenerate:
+It inserts 90 invented sessions per assistant into a temporary database, blocks
+real usage paths, and renders the page with a fresh browser profile in UTC.
+The Codex capture uses the actual source button to switch from Claude Code.
+To regenerate:
 
 ```bash
 python3 scripts/render-demo.py --browser /path/to/chrome-headless-shell
