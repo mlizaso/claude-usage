@@ -67,7 +67,7 @@ jobs:
                       and p.is_file()]
           assert len(binaries) == 1, binaries
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as stream:
-              stream.write("CLAUDE_USAGE_CHROME=" + str(binaries[0].resolve()) + "\n")
+              stream.write("CODEX_CLAUDE_USAGE_CHROME=" + str(binaries[0].resolve()) + "\n")
           PY
 
       - name: Run tests
@@ -77,7 +77,7 @@ jobs:
         # that dropped node report green while testing none of the JS — this
         # flag turns that silent skip into a loud failure.
         #
-        # CLAUDE_USAGE_REQUIRE_BROWSER is the same contract for the only tests
+        # CODEX_CLAUDE_USAGE_REQUIRE_BROWSER is the same contract for the only tests
         # that see pixels. Everything else runs under node against a DOM stub
         # with no fonts, no boxes and no scrollbars, which is how a table
         # rendering 146px outside its own column, a page-wide horizontal
@@ -90,8 +90,8 @@ jobs:
         # The pinned headless shell avoids desktop-browser startup stalls and
         # gives Windows the same rendered-geometry coverage as Linux and macOS.
         env:
-          CLAUDE_USAGE_REQUIRE_JS: "1"
-          CLAUDE_USAGE_REQUIRE_BROWSER: ${{ matrix.require-browser }}
+          CODEX_CLAUDE_USAGE_REQUIRE_JS: "1"
+          CODEX_CLAUDE_USAGE_REQUIRE_BROWSER: ${{ matrix.require-browser }}
         # -t . is load-bearing, not tidiness: without it discovery sets
         # top_level_dir to `tests` and imports every module under its BARE
         # name, so `tests/__init__.py` -- which installs the guard that stops a

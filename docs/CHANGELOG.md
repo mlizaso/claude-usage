@@ -8,6 +8,12 @@ and environment notes have been removed from this public summary.
 
 ## Unreleased
 
+- Renamed the project to Codex / Claude Usage, with the `codex-claude-usage`
+  repository, command, distribution, Homebrew formula and extension identity.
+  The Python package is `codex_claude_usage`; settings and environment variables
+  now use `codexClaudeUsage` and `CODEX_CLAUDE_USAGE`. Local installers retire
+  both previous extension identities before installing the renamed extension.
+  Existing host transcript roots and usage database locations remain intact.
 - Added explicit standard API rates for Opus 5.5, Sonnet 5.5, Fable/Mythos 5.1,
   GPT-6 Sol and GPT-6 Luna; verified Astra's rates and the GPT-6 long-context
   tier. Kept older model rates and dated policies separate.

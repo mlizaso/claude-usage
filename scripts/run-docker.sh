@@ -2,20 +2,20 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-IMAGE="${CLAUDE_USAGE_DOCKER_IMAGE:-claude-usage}"
-APP_CONTAINER="${CLAUDE_USAGE_DOCKER_APP_CONTAINER:-claude-usage}"
-PROXY_CONTAINER="${CLAUDE_USAGE_DOCKER_PROXY_CONTAINER:-claude-usage-proxy}"
-PRIVATE_NETWORK="${CLAUDE_USAGE_DOCKER_PRIVATE_NETWORK:-claude-usage-private}"
-PROXY_NETWORK="${CLAUDE_USAGE_DOCKER_PROXY_NETWORK:-claude-usage-loopback}"
-PORT="${CLAUDE_USAGE_DOCKER_PORT:-9898}"
-CLAUDE_USAGE_INVOKED_AS=docker
-CLAUDE_USAGE_DOCKER_CONTAINER="$APP_CONTAINER"
-MANAGED_LABEL="com.claude-usage.managed"
-LAUNCH_LABEL="com.claude-usage.launch"
+IMAGE="${CODEX_CLAUDE_USAGE_DOCKER_IMAGE:-codex-claude-usage}"
+APP_CONTAINER="${CODEX_CLAUDE_USAGE_DOCKER_APP_CONTAINER:-codex-claude-usage}"
+PROXY_CONTAINER="${CODEX_CLAUDE_USAGE_DOCKER_PROXY_CONTAINER:-codex-claude-usage-proxy}"
+PRIVATE_NETWORK="${CODEX_CLAUDE_USAGE_DOCKER_PRIVATE_NETWORK:-codex-claude-usage-private}"
+PROXY_NETWORK="${CODEX_CLAUDE_USAGE_DOCKER_PROXY_NETWORK:-codex-claude-usage-loopback}"
+PORT="${CODEX_CLAUDE_USAGE_DOCKER_PORT:-9898}"
+CODEX_CLAUDE_USAGE_INVOKED_AS=docker
+CODEX_CLAUDE_USAGE_DOCKER_CONTAINER="$APP_CONTAINER"
+MANAGED_LABEL="com.codex-claude-usage.managed"
+LAUNCH_LABEL="com.codex-claude-usage.launch"
 CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-DATA_DIR="${CLAUDE_USAGE_DOCKER_DATA_DIR:-$HOME/.local/share/claude-usage-docker}"
+DATA_DIR="${CODEX_CLAUDE_USAGE_DOCKER_DATA_DIR:-$HOME/.local/share/codex-claude-usage-docker}"
 # EXPORTED so `docker run` can be handed the NAME with no `=value`. Passing it
-# as `--env CLAUDE_USAGE_API_TOKEN="$API_TOKEN"` put the whole 64-hex bearer
+# as `--env CODEX_CLAUDE_USAGE_API_TOKEN="$API_TOKEN"` put the whole 64-hex bearer
 # token in the `docker run` process's argv, and on Linux /proc/<pid>/cmdline is
 # mode 444 with no `hidepid` by default -- so any other local user sweeping the
 # process table while the launcher runs captures it, and the
@@ -26,10 +26,10 @@ DATA_DIR="${CLAUDE_USAGE_DOCKER_DATA_DIR:-$HOME/.local/share/claude-usage-docker
 # instead, which is /proc/<pid>/environ -- mode 0400, owner-only.
 # `vscode-extension/src/server-manager.ts` already passes this same secret by
 # environment rather than argv; this was the one surface that did not.
-export API_TOKEN CLAUDE_USAGE_API_TOKEN PORT
-export CLAUDE_USAGE_INVOKED_AS CLAUDE_USAGE_DOCKER_CONTAINER
+export API_TOKEN CODEX_CLAUDE_USAGE_API_TOKEN PORT
+export CODEX_CLAUDE_USAGE_INVOKED_AS CODEX_CLAUDE_USAGE_DOCKER_CONTAINER
 API_TOKEN="$(od -An -N32 -tx1 /dev/urandom | tr -d '[:space:]')"
-CLAUDE_USAGE_API_TOKEN="$API_TOKEN"
+CODEX_CLAUDE_USAGE_API_TOKEN="$API_TOKEN"
 LAUNCH_ID="$(od -An -N24 -tx1 /dev/urandom | tr -d '[:space:]')"
 
 if [[ ! "$API_TOKEN" =~ ^[0-9a-f]{64}$ ]]; then
@@ -49,7 +49,7 @@ fi
 
 if [[ ! "$PORT" =~ ^[1-9][0-9]{3,4}$ ]] \
   || (( 10#$PORT < 1024 || 10#$PORT > 65535 )); then
-  echo "❌  CLAUDE_USAGE_DOCKER_PORT must be a decimal integer from 1024 to 65535 with no leading zero." >&2
+  echo "❌  CODEX_CLAUDE_USAGE_DOCKER_PORT must be a decimal integer from 1024 to 65535 with no leading zero." >&2
   exit 1
 fi
 # Canonicalize once so Bash, Docker, and Python cannot disagree about the
@@ -290,12 +290,12 @@ start_app_container() {
     --label "$LAUNCH_LABEL=$LAUNCH_ID" \
     --env HOST=0.0.0.0 \
     --env PORT \
-    --env CLAUDE_USAGE_INVOKED_AS \
-    --env CLAUDE_USAGE_DOCKER_CONTAINER \
-    --env CLAUDE_USAGE_ALLOW_CONTAINER_BIND=1 \
-    --env CLAUDE_USAGE_API_TOKEN \
-    --env CLAUDE_USAGE_SUPPRESS_AUTH_URL=1 \
-    --mount "type=bind,src=$CLAUDE_DIR/projects,dst=/home/claudeusage/.claude/projects,readonly" \
+    --env CODEX_CLAUDE_USAGE_INVOKED_AS \
+    --env CODEX_CLAUDE_USAGE_DOCKER_CONTAINER \
+    --env CODEX_CLAUDE_USAGE_ALLOW_CONTAINER_BIND=1 \
+    --env CODEX_CLAUDE_USAGE_API_TOKEN \
+    --env CODEX_CLAUDE_USAGE_SUPPRESS_AUTH_URL=1 \
+    --mount "type=bind,src=$CLAUDE_DIR/projects,dst=/home/codexclaudeusage/.claude/projects,readonly" \
     --mount "type=bind,src=$DATA_DIR,dst=/data" \
     "$IMAGE"
 }

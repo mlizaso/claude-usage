@@ -26,7 +26,7 @@ def run_cli(argv, printing=None):
     Two streams because `main`'s diagnostics and its report output are no longer
     the same stream, and one of the two tells a caller apart from a shell.
     `printing` lets a stub emit a line on stdout, so a test can assert exactly
-    what `$(claude-usage url)` substitutes.
+    what `$(codex-claude-usage url)` substitutes.
     """
     calls = []
 
@@ -559,8 +559,8 @@ class TestTheScanRootWarningReachesOnlyTheCommandsThatScan(unittest.TestCase):
     Four of them never read a transcript directory, and on one the warning broke
     a caller rather than merely puzzling one: `url`'s stdout is a single URL, and
     it is documented as the way back in after losing the link, so
-    `open "$(claude-usage url)"` received the warning, a newline, then the link.
-    A root named in CLAUDE_USAGE_PROJECTS_DIRS that is not currently mounted is
+    `open "$(codex-claude-usage url)"` received the warning, a newline, then the link.
+    A root named in CODEX_CLAUDE_USAGE_PROJECTS_DIRS that is not currently mounted is
     the ordinary way it fires, and it needs no flag — the four read commands do
     not accept `--projects-dir` at all.
     """
@@ -574,7 +574,7 @@ class TestTheScanRootWarningReachesOnlyTheCommandsThatScan(unittest.TestCase):
 
     def _run(self, argv, **kwargs):
         with mock.patch.dict(os.environ,
-                             {"CLAUDE_USAGE_PROJECTS_DIRS": self.missing}):
+                             {"CODEX_CLAUDE_USAGE_PROJECTS_DIRS": self.missing}):
             return run_cli(argv, **kwargs)
 
     def test_a_read_command_warns_about_scan_roots_on_neither_stream(self):

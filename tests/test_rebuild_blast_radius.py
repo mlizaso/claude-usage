@@ -355,7 +355,7 @@ class TestTheExemptionStopsWhereTheDataStarts(unittest.TestCase):
         """
         path = self.dir / "notes.db"
         # A foreign application does not open its database through our
-        # `get_db`: doing so claims the file with claude-usage's durable SQLite
+        # `get_db`: doing so claims the file with codex-claude-usage's durable SQLite
         # application id before its first table is created. Build this fixture
         # through SQLite itself so it has no product identity.
         conn = sqlite3.connect(path)

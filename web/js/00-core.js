@@ -39,7 +39,7 @@ const APP_COMMANDS = Object.freeze({
 
 function apiFetch(path, options = {}) {
   const headers = new Headers(options.headers || {});
-  if (API_TOKEN) headers.set('X-Claude-Usage-Token', API_TOKEN);
+  if (API_TOKEN) headers.set('X-Codex-Claude-Usage-Token', API_TOKEN);
   return fetch(path, {
     ...options,
     headers,

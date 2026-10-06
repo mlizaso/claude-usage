@@ -217,7 +217,7 @@ def project_name_from_cwd(cwd, home=None):
        "the parent directory is safe" was never true, only "the parent
        directory is whatever happened to be there".
     2. **It is inert in the shipped Docker image.** The Dockerfile sets
-       `HOME=/home/claudeusage` while the bind-mounted transcripts carry the
+       `HOME=/home/codexclaudeusage` while the bind-mounted transcripts carry the
        HOST user's paths, so no leaf ever matches. Nothing here can fix that:
        the container cannot know the host's username. A scan run on the host
        folds those same sessions correctly.

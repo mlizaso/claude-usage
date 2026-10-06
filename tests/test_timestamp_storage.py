@@ -5,8 +5,8 @@ import sqlite3
 import tempfile
 import unittest
 
-from claude_usage import db, rollups, scanner
-from claude_usage.timestamps import timestamp_compare, timestamp_order
+from codex_claude_usage import db, rollups, scanner
+from codex_claude_usage.timestamps import timestamp_compare, timestamp_order
 
 
 class TimestampStorageTests(unittest.TestCase):

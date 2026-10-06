@@ -1,7 +1,7 @@
 """A standalone quota page and threshold API, without the rest of the tool.
 
-    python -m claude_usage.limits_server  # this alone, on 127.0.0.1:8081
-    claude-usage dashboard               # the full app alone, on 8080
+    python -m codex_claude_usage.limits_server  # this alone, on 127.0.0.1:8081
+    codex-claude-usage dashboard               # the full app alone, on 8080
 
 Neither needs the other. The full dashboard reads quota through `account.py`
 exactly as it always has. This server's much smaller built-in front end only
@@ -62,8 +62,8 @@ DEFAULT_PORT = 8081
 # Same shape the dashboard requires, so a token generated for one is valid for
 # the other and a user running both is not juggling two secrets.
 LOCAL_TOKEN_RE = re.compile(r"[A-Za-z0-9_-]{32,128}")
-API_TOKEN_HEADER = "X-Claude-Usage-Token"
-TOKEN_ENV = "CLAUDE_USAGE_API_TOKEN"
+API_TOKEN_HEADER = "X-Codex-Claude-Usage-Token"
+TOKEN_ENV = "CODEX_CLAUDE_USAGE_API_TOKEN"
 
 _configured = os.environ.get(TOKEN_ENV, "")
 API_TOKEN = _configured if LOCAL_TOKEN_RE.fullmatch(_configured) else secrets.token_urlsafe(32)
@@ -250,7 +250,7 @@ def safe_limits_payload(payload):
 
 
 class LimitsHandler(LoopbackRequestHandlerMixin, http.server.BaseHTTPRequestHandler):
-    server_version = "claude-usage-limits"
+    server_version = "codex-claude-usage-limits"
     sys_version = ""
 
     def log_message(self, *args):

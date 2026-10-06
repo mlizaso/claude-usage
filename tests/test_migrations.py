@@ -1884,12 +1884,12 @@ class TestTheMigrationMachineryIsGoneFromTheSource(unittest.TestCase):
         `transcripts.py`, `codex_transcripts.py` and `rollups.py` (twice) --
         none of which the two-file version could ever have seen.
 
-        Globbing ``claude_usage/`` is the fix rather than a longer hand-kept
+        Globbing ``codex_claude_usage/`` is the fix rather than a longer hand-kept
         list: a list that silently omits a file is worse than no list, because
         it is the thing a reader trusts.
         """
         modules = sorted(p.relative_to(self.ROOT) for p in
-                         (self.ROOT / "claude_usage").glob("*.py"))
+                         (self.ROOT / "codex_claude_usage").glob("*.py"))
         self.assertGreater(len(modules), 5,
                            "the glob found almost nothing; check ROOT")
         for name in modules:
@@ -1906,7 +1906,7 @@ class TestTheMigrationMachineryIsGoneFromTheSource(unittest.TestCase):
         second occurrence would indicate that executable migration code has
         started reading or writing it again.
         """
-        for path in sorted((self.ROOT / "claude_usage").glob("*.py")):
+        for path in sorted((self.ROOT / "codex_claude_usage").glob("*.py")):
             code = self._code_without_comments(path)
             expected = 1 if path.name == "db.py" else 0
             self.assertEqual(code.count("schema_meta"), expected, path.name)
@@ -1928,7 +1928,7 @@ class TestTheMigrationMachineryIsGoneFromTheSource(unittest.TestCase):
         left an untracked `.py` file, named in no `.gitignore`, inside the one
         directory two other guards enumerate from disk.
         """
-        code = self._code_without_comments("claude_usage/scanner.py")
+        code = self._code_without_comments("codex_claude_usage/scanner.py")
         self.assertIn("_model_priority_sql", code, "the stripper ate the source")
         with tempfile.TemporaryDirectory() as tmp:
             planted = Path(tmp) / "_guard_probe_nomig.py"
@@ -1948,7 +1948,7 @@ class TestTheMigrationMachineryIsGoneFromTheSource(unittest.TestCase):
         optimisation reaching for a gate is exactly what this must catch: the
         sweep's `UPDATE sessions` must sit at `scan()`'s own indentation, not
         inside an `if`."""
-        source = (self.ROOT / "claude_usage" / "scanner.py").read_text(
+        source = (self.ROOT / "codex_claude_usage" / "scanner.py").read_text(
             encoding="utf-8")
         self.assertIn("\n    conn.execute(f\"\"\"\n        UPDATE sessions SET\n",
                       source)

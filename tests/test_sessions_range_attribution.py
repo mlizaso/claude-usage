@@ -969,7 +969,7 @@ class TestADerivedCacheWriteRateIsStableAcrossRowSizes(unittest.TestCase):
     price — the claim `mixedTiers` exists three lines away to avoid making.
 
     Every rate PRICING ships is dyadic, so the shipped table cannot exercise
-    this at all; the path is reached through `CLAUDE_USAGE_RATES`, which this
+    this at all; the path is reached through `CODEX_CLAUDE_USAGE_RATES`, which this
     same campaign wired through to the browser. The test therefore overrides a
     rate, and keeps a dyadic control beside it.
     """

@@ -6,7 +6,7 @@ two of its behaviours were asserted by nothing at all. Both were measured on
 for the pair of them together.
 
 **The missing-database diagnostic goes to stderr.** Put it back on stdout and
-`claude-usage stats > report.txt` on a machine that has never scanned writes
+`codex-claude-usage stats > report.txt` on a machine that has never scanned writes
 "Database not found. Run: python cli.py scan" into the report file, where the
 reader finds a sentence instead of a table and the terminal shows nothing at
 all. That is the same rule `TestTheScanRootWarningReachesOnlyTheCommandsThatScan`

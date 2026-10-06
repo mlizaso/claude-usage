@@ -48,7 +48,7 @@ def fmt_money(value):
 NODE = shutil.which("node")
 # CI sets this so a runner that lost node fails loudly instead of quietly
 # skipping every JavaScript assertion and still reporting green.
-REQUIRE_JS = os.environ.get("CLAUDE_USAGE_REQUIRE_JS") == "1"
+REQUIRE_JS = os.environ.get("CODEX_CLAUDE_USAGE_REQUIRE_JS") == "1"
 
 requires_node = unittest.skipUnless(NODE, "no JavaScript engine (node) on PATH")
 
@@ -236,11 +236,11 @@ def emit(expr, **bindings):
 class TestNodeAvailability(unittest.TestCase):
     """Kept undecorated and in its own class so the failure reads cleanly."""
 
-    @unittest.skipUnless(REQUIRE_JS, "only enforced when CLAUDE_USAGE_REQUIRE_JS=1")
+    @unittest.skipUnless(REQUIRE_JS, "only enforced when CODEX_CLAUDE_USAGE_REQUIRE_JS=1")
     def test_node_is_present_when_ci_requires_it(self):
         self.assertIsNotNone(
             NODE,
-            "CLAUDE_USAGE_REQUIRE_JS=1 but node is not on PATH, so every "
+            "CODEX_CLAUDE_USAGE_REQUIRE_JS=1 but node is not on PATH, so every "
             "JavaScript assertion would have been skipped while CI stayed green.",
         )
 
@@ -601,7 +601,7 @@ class TestTheTwoTokenFormattersAgree(unittest.TestCase):
             (REPO_ROOT / "web" / "js" / "20-format.js").read_text(encoding="utf-8"))
         py = self._tiers(
             self._PY_TIER,
-            (REPO_ROOT / "claude_usage" / "pricing.py").read_text(
+            (REPO_ROOT / "codex_claude_usage" / "pricing.py").read_text(
                 encoding="utf-8"))
         # Refuse to pass vacuously: two empty lists are equal, and a rename that
         # stopped both regexes matching would otherwise read as agreement.
@@ -7473,8 +7473,8 @@ class TestDailyStatsPanelLayout(unittest.TestCase):
 # from vendor/ exactly as the server serves it.
 
 def _find_browser():
-    """A Chrome/Chromium binary, or None. CLAUDE_USAGE_CHROME overrides."""
-    named = os.environ.get("CLAUDE_USAGE_CHROME")
+    """A Chrome/Chromium binary, or None. CODEX_CLAUDE_USAGE_CHROME overrides."""
+    named = os.environ.get("CODEX_CLAUDE_USAGE_CHROME")
     if named:
         return Path(named) if Path(named).exists() else None
     cache = Path.home() / ".cache" / "puppeteer"
@@ -7501,11 +7501,11 @@ def _find_browser():
 
 
 BROWSER = _find_browser()
-# Same contract as CLAUDE_USAGE_REQUIRE_JS: a machine that is supposed to have a
+# Same contract as CODEX_CLAUDE_USAGE_REQUIRE_JS: a machine that is supposed to have a
 # browser must fail loudly rather than skip the only tests that see pixels.
-REQUIRE_BROWSER = os.environ.get("CLAUDE_USAGE_REQUIRE_BROWSER") == "1"
+REQUIRE_BROWSER = os.environ.get("CODEX_CLAUDE_USAGE_REQUIRE_BROWSER") == "1"
 requires_browser = unittest.skipUnless(
-    BROWSER, "no Chrome/Chromium found (set CLAUDE_USAGE_CHROME to one)")
+    BROWSER, "no Chrome/Chromium found (set CODEX_CLAUDE_USAGE_CHROME to one)")
 
 # Written into the served copy of the page, never into web/. It waits for the
 # panel the app renders, then records the three things the stub cannot see.
@@ -7779,7 +7779,7 @@ def _measure_in_browser(width, height=900, attempts=3, scale=1):
                     "class times out on it. Restore the light binary with\n"
                     "    npx @puppeteer/browsers install chrome-headless-shell@stable\n"
                     "  and move it under ~/.cache/puppeteer/, or point "
-                    "CLAUDE_USAGE_CHROME at one.\n"
+                    "CODEX_CLAUDE_USAGE_CHROME at one.\n"
                     "Otherwise suspect contention: this machine is running "
                     "%.1f process(es) per CPU (%d CPUs, 1-minute load average "
                     "%s), and anything far above 1.0 means the browser is "
@@ -7815,11 +7815,11 @@ class TestBrowserAvailability(unittest.TestCase):
     """Kept undecorated and in its own class so the failure reads cleanly."""
 
     @unittest.skipUnless(REQUIRE_BROWSER,
-                         "only enforced when CLAUDE_USAGE_REQUIRE_BROWSER=1")
+                         "only enforced when CODEX_CLAUDE_USAGE_REQUIRE_BROWSER=1")
     def test_a_browser_is_present_when_the_run_requires_it(self):
         self.assertIsNotNone(
             BROWSER,
-            "CLAUDE_USAGE_REQUIRE_BROWSER=1 but no Chrome/Chromium was found, "
+            "CODEX_CLAUDE_USAGE_REQUIRE_BROWSER=1 but no Chrome/Chromium was found, "
             "so every rendered-geometry assertion would have been skipped "
             "while the run stayed green.")
 
@@ -7884,7 +7884,7 @@ class TestBrowserLaunchSurvivesContention(unittest.TestCase):
             except unittest.SkipTest as exc:
                 self.fail("a stalled browser SKIPPED the geometry class instead "
                           "of failing it, which is the silent pass "
-                          "CLAUDE_USAGE_REQUIRE_BROWSER exists to stop: %s" % exc)
+                          "CODEX_CLAUDE_USAGE_REQUIRE_BROWSER exists to stop: %s" % exc)
             except subprocess.TimeoutExpired as exc:
                 self.fail("TimeoutExpired escaped _measure_in_browser instead of "
                           "being retried and reported: %s" % exc)
@@ -8045,7 +8045,7 @@ class TestBrowserLaunchSurvivesContention(unittest.TestCase):
         inside `assertRaises(AssertionError)` is not caught — it propagates, and
         unittest reports the test as *skipped*. Deleting the branch this pins
         therefore turned the whole class green-with-a-skip, which is the silent
-        pass CLAUDE_USAGE_REQUIRE_BROWSER exists to stop.
+        pass CODEX_CLAUDE_USAGE_REQUIRE_BROWSER exists to stop.
         """
         empty = mock.Mock(stdout="<html></html>", stderr="no --dump-dom here")
         for required, wanted in ((False, unittest.SkipTest), (True, AssertionError)):
@@ -8059,7 +8059,7 @@ class TestBrowserLaunchSurvivesContention(unittest.TestCase):
                     raised = None
             self.assertIsInstance(
                 raised, wanted,
-                "with CLAUDE_USAGE_REQUIRE_BROWSER=%r a browser that produced no "
+                "with CODEX_CLAUDE_USAGE_REQUIRE_BROWSER=%r a browser that produced no "
                 "measurement raised %r, not %s"
                 % (required, raised, wanted.__name__))
 

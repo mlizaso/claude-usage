@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
 import type { PythonLocation } from "../src/python-locator";
@@ -38,6 +38,9 @@ const hooks = vi.hoisted(() => ({
   resolveStablePortArgs: [] as unknown[][],
   savedPort: undefined as number | undefined,
   persistedPort: undefined as number | undefined,
+  configurationSections: [] as string[],
+  viewIds: [] as string[],
+  workspaceStateKeys: [] as string[],
   sidebarCalls: [] as Array<{ method: string; arg?: unknown }>,
   sidebarOnShow: undefined as undefined | (() => void),
 }));
@@ -49,7 +52,10 @@ vi.mock("vscode", () => ({
       show: () => { hooks.showLogsCalls++; },
       dispose: () => {},
     }),
-    registerWebviewViewProvider: () => ({ dispose: () => {} }),
+    registerWebviewViewProvider: (id: string) => {
+      hooks.viewIds.push(id);
+      return { dispose: () => {} };
+    },
     showErrorMessage: (...args: unknown[]) => {
       hooks.errorMessages.push(args);
       return Promise.resolve(undefined);
@@ -67,16 +73,19 @@ vi.mock("vscode", () => ({
     executeCommand: (...args: unknown[]) => hooks.executeCommand(...args),
   },
   workspace: {
-    getConfiguration: () => ({
-      inspect: (key: string) =>
-        key in hooks.settings ? { globalValue: hooks.settings[key] } : undefined,
-    }),
+    getConfiguration: (section: string) => {
+      hooks.configurationSections.push(section);
+      return {
+        inspect: (key: string) =>
+          key in hooks.settings ? { globalValue: hooks.settings[key] } : undefined,
+      };
+    },
   },
 }));
 
 vi.mock("../src/sidebar", () => {
   class DashboardSidebar {
-    static viewId = "claudeUsage.dashboard";
+    static viewId = "codexClaudeUsage.dashboard";
     constructor(onShow?: () => void, _extensionUri?: unknown) {
       hooks.sidebarOnShow = onShow;
     }
@@ -128,8 +137,14 @@ function makeContext() {
     extensionUri: { scheme: "file", fsPath: extensionDir, toString: () => `file://${extensionDir}` },
     subscriptions: [] as Array<{ dispose(): void }>,
     workspaceState: {
-      get: () => hooks.savedPort,
-      update: async (_key: string, value: number) => { hooks.persistedPort = value; },
+      get: (key: string) => {
+        hooks.workspaceStateKeys.push(key);
+        return hooks.savedPort;
+      },
+      update: async (key: string, value: number) => {
+        hooks.workspaceStateKeys.push(key);
+        hooks.persistedPort = value;
+      },
     },
   } as any;
 }
@@ -137,8 +152,8 @@ function makeContext() {
 /** Activate, then run the same startup the activity-bar icon triggers. */
 async function startup(): Promise<void> {
   activate(makeContext());
-  const open = hooks.commands.get("claudeUsage.open");
-  if (!open) throw new Error("claudeUsage.open was never registered");
+  const open = hooks.commands.get("codexClaudeUsage.open");
+  if (!open) throw new Error("codexClaudeUsage.open was never registered");
   await open();
 }
 
@@ -169,6 +184,9 @@ beforeEach(() => {
   hooks.resolveStablePortArgs = [];
   hooks.savedPort = undefined;
   hooks.persistedPort = undefined;
+  hooks.configurationSections = [];
+  hooks.viewIds = [];
+  hooks.workspaceStateKeys = [];
   hooks.sidebarCalls = [];
   hooks.sidebarOnShow = undefined;
 
@@ -176,7 +194,7 @@ beforeEach(() => {
   // for real — so give it a real directory rather than mocking install-mode out.
   // Without one, doStartup takes the `mode.kind === "none"` early return and the
   // wiring assertions below would pass while asserting nothing.
-  extensionDir = mkdtempSync(path.join(tmpdir(), "claude-usage-ext-"));
+  extensionDir = mkdtempSync(path.join(tmpdir(), "codex-claude-usage-ext-"));
   mkdirSync(path.join(extensionDir, "python"));
   writeFileSync(path.join(extensionDir, "python", "cli.py"), "# stub\n");
 });
@@ -187,6 +205,39 @@ afterEach(() => {
 });
 
 describe("extension startup wiring", () => {
+  it("wires the renamed manifest contributions to the same runtime namespace", async () => {
+    const pkg = JSON.parse(readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
+    const revealCommands: unknown[] = [];
+    hooks.executeCommand = async (command) => { revealCommands.push(command); };
+    await startup();
+
+    expect(pkg.name).toBe("codex-claude-usage");
+    expect(pkg.publisher).toBe("mlizaso");
+    expect([...hooks.commands.keys()]).toEqual([
+      "codexClaudeUsage.open",
+      "codexClaudeUsage.rescan",
+      "codexClaudeUsage.restart",
+      "codexClaudeUsage.showLogs",
+    ]);
+    expect(pkg.contributes.commands.map((command: { command: string }) => command.command))
+      .toEqual([...hooks.commands.keys()]);
+    const container = pkg.contributes.viewsContainers.activitybar[0].id;
+    expect(container).toBe("codexClaudeUsageSidebar");
+    expect(revealCommands).toEqual([`workbench.view.extension.${container}`]);
+    expect(hooks.viewIds).toEqual([pkg.contributes.views[container][0].id]);
+    expect(hooks.viewIds).toEqual(["codexClaudeUsage.dashboard"]);
+    expect(hooks.configurationSections).toEqual(["codexClaudeUsage"]);
+    expect(Object.keys(pkg.contributes.configuration.properties)).toEqual([
+      "codexClaudeUsage.pythonPath",
+      "codexClaudeUsage.cliPath",
+      "codexClaudeUsage.port",
+    ]);
+    expect(hooks.workspaceStateKeys).toEqual([
+      "codexClaudeUsage.lastPort",
+      "codexClaudeUsage.lastPort",
+    ]);
+  });
+
   it("spawns the dashboard on loopback with the embedded-surface flags", async () => {
     await startup();
 
@@ -224,7 +275,7 @@ describe("extension startup wiring", () => {
       finishDiscovery = resolve;
     });
     activate(makeContext());
-    const open = hooks.commands.get("claudeUsage.open");
+    const open = hooks.commands.get("codexClaudeUsage.open");
     const starting = Promise.resolve(open?.());
     await flush();
 
@@ -242,7 +293,7 @@ describe("extension startup wiring", () => {
       finishStart = resolve;
     });
     activate(makeContext());
-    const open = hooks.commands.get("claudeUsage.open");
+    const open = hooks.commands.get("codexClaudeUsage.open");
     const starting = Promise.resolve(open?.());
     await flush();
     expect(hooks.serverOptions).toHaveLength(1);
@@ -291,7 +342,7 @@ describe("extension startup wiring", () => {
     expect(hooks.serverOptions).toHaveLength(0);
   });
 
-  it("blames the setting, not the bundle, when claudeUsage.cliPath is broken", async () => {
+  it("blames the setting, not the bundle, when codexClaudeUsage.cliPath is broken", async () => {
     // The install-side twin of the pythonPath defect above. One unbranched
     // string was printed whether or not the setting was the cause, and it never
     // named the path that had been refused — so the user could not tell which
@@ -306,7 +357,7 @@ describe("extension startup wiring", () => {
     // The setting really reached the resolver — otherwise the message could be
     // "right" while naming a path the user never typed.
     expect(panel).toContain(stale);
-    expect(panel).toContain("claudeUsage.cliPath");
+    expect(panel).toContain("codexClaudeUsage.cliPath");
     // Both surfaces come from the one helper, so the panel and the modal cannot
     // drift into describing two different causes.
     expect(panel).toBe(noInstallMessage({
@@ -332,7 +383,7 @@ describe("extension startup wiring", () => {
     expect(noInstallMessage(broken)).not.toBe(noInstallMessage(nothing));
     // The no-setting arm must not send the user to inspect a setting that is
     // empty by definition of this arm.
-    expect(noInstallMessage(nothing)).not.toContain("Check your claudeUsage.cliPath setting");
+    expect(noInstallMessage(nothing)).not.toContain("Check your codexClaudeUsage.cliPath setting");
     expect(noInstallMessage(nothing)).not.toContain("/opt/gone/cli.py");
     // And NEITHER may repeat the old remedy. resolveInstallMode returns `none`
     // only when the bundled copy did not resolve, so "clear the setting to fall
@@ -359,7 +410,7 @@ describe("extension startup wiring", () => {
     expect(hooks.serverOptions[0].args).toContain(path.join(extensionDir, "python", "cli.py"));
     // …and says so, on both surfaces, naming the rejected path AND the copy it
     // ran instead. Only the two side by side make the substitution visible.
-    const logged = hooks.outputLines.find((l) => l.includes("ignored your claudeUsage.cliPath"));
+    const logged = hooks.outputLines.find((l) => l.includes("ignored your codexClaudeUsage.cliPath"));
     expect(logged).toBe(
       ignoredCliPathMessage(stale, path.join(extensionDir, "python", "cli.py")),
     );
@@ -377,7 +428,7 @@ describe("extension startup wiring", () => {
 
     expect(hooks.serverOptions).toHaveLength(1);
     expect(hooks.warningMessages).toHaveLength(0);
-    expect(hooks.outputLines.some((l) => l.includes("claudeUsage.cliPath"))).toBe(false);
+    expect(hooks.outputLines.some((l) => l.includes("codexClaudeUsage.cliPath"))).toBe(false);
   });
 
   it("does not warn about a cliPath that resolved", async () => {
@@ -404,7 +455,7 @@ describe("extension startup wiring", () => {
     expect(hooks.serverOptions).toHaveLength(0);
   });
 
-  it("blames the setting, not PATH, when claudeUsage.pythonPath is broken", async () => {
+  it("blames the setting, not PATH, when codexClaudeUsage.pythonPath is broken", async () => {
     // The defect this pair of assertions exists for: locatePython fails CLOSED
     // on a non-empty setting, so the PATH is never searched — and both the
     // panel text and the modal said "needs Python 3.11+ on PATH" anyway. A
@@ -424,8 +475,8 @@ describe("extension startup wiring", () => {
     // The setting really reached the locator — otherwise the message could be
     // "right" while naming a path the user never typed.
     expect(panel).toContain(stale);
-    expect(panel).toContain("claudeUsage.pythonPath");
-    expect(dialog).toContain("claudeUsage.pythonPath");
+    expect(panel).toContain("codexClaudeUsage.pythonPath");
+    expect(dialog).toContain("codexClaudeUsage.pythonPath");
     // Neither string may repeat the old advice.
     expect(panel).not.toContain("needs Python 3.11 or newer on your PATH");
     expect(dialog).not.toContain("needs Python 3.11+ on PATH");
@@ -478,7 +529,7 @@ describe("extension startup wiring", () => {
     await startup();
     hooks.sidebarCalls = [];
 
-    const rescan = hooks.commands.get("claudeUsage.rescan");
+    const rescan = hooks.commands.get("codexClaudeUsage.rescan");
     expect(rescan).toBeDefined();
     await rescan?.();
 
@@ -489,7 +540,7 @@ describe("extension startup wiring", () => {
   it("starts the dashboard before a Rescan command issued on a cold extension", async () => {
     activate(makeContext());
 
-    const rescan = hooks.commands.get("claudeUsage.rescan");
+    const rescan = hooks.commands.get("codexClaudeUsage.rescan");
     await rescan?.();
 
     expect(hooks.serverOptions).toHaveLength(1);
@@ -502,7 +553,7 @@ describe("extension startup wiring", () => {
     hooks.sidebarCalls = [];
     hooks.rescanBehavior = async () => { throw new Error("A rescan is already running"); };
 
-    const rescan = hooks.commands.get("claudeUsage.rescan");
+    const rescan = hooks.commands.get("codexClaudeUsage.rescan");
     await rescan?.();
 
     expect(hooks.sidebarCalls).toEqual([]);

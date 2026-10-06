@@ -477,7 +477,7 @@ function dispatchPartsInRange(r, start, end) {
 // "claude") or "claude"` in rollups.py — eight arrays, counted 2026-08-15.
 // Nor does an outliving snapshot supply one: the page and
 // every payload it polls come from one process, whose API token is minted per
-// process unless `CLAUDE_USAGE_API_TOKEN` pins it, so a server swapped
+// process unless `CODEX_CLAUDE_USAGE_API_TOKEN` pins it, so a server swapped
 // underneath a live page answers 403 rather than with an older row shape. The
 // `||` is therefore one operator's worth of insurance against a payload shape
 // nobody has re-derived, and nothing rests on it.
@@ -536,7 +536,7 @@ function columnRate(row, column) {
   // different rates and the cell printed that model's own list price labelled
   // `avg`: the claim mixedTiers refuses to make three lines below, made here by
   // arithmetic. Every rate PRICING ships is dyadic, so this is reachable only
-  // through a CLAUDE_USAGE_RATES override.
+  // through a CODEX_CLAUDE_USAGE_RATES override.
   if (total <= 0 || long === 0) return p.cache_write;
   if (long === total) return p.cache_write_1h;
   // The genuine mix, still a quotient and still float-unstable — and that is

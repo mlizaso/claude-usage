@@ -11,7 +11,7 @@ and are not remotely alike:
   on at all.
 
 The second was reproduced end to end: an unrelated database holding `notes` and
-`invoices`, pointed at by `CLAUDE_USAGE_DB`, handed to the READ-ONLY command
+`invoices`, pointed at by `CODEX_CLAUDE_USAGE_DB`, handed to the READ-ONLY command
 `cli.py stats`. Both tables and all four rows were dropped, under a stderr
 notice reading "The database is only a cache of your transcripts, so no usage
 history is lost". The drop runs with `PRAGMA secure_delete` on and is followed
@@ -19,7 +19,7 @@ by a VACUUM, so the pages are zeroed — there is nothing to recover. The
 pre-removal build left that file untouched, so it was a regression rather than a
 standing hazard.
 
-Reaching it needs no exotic setup. The `Dockerfile` sets `CLAUDE_USAGE_DB`, this
+Reaching it needs no exotic setup. The `Dockerfile` sets `CODEX_CLAUDE_USAGE_DB`, this
 repository's own documentation tells users to give each installed version its
 own, and a typo or a reused path is the whole of it.
 
@@ -157,7 +157,7 @@ class TestAForeignFileIsRefusedRatherThanRebuilt(unittest.TestCase):
             init_db(conn, self.path)
         text = str(caught.exception)
         self.assertIn(str(self.path), text)
-        self.assertIn("CLAUDE_USAGE_DB", text)
+        self.assertIn("CODEX_CLAUDE_USAGE_DB", text)
         # The tables it found, so the reader can recognise their own file.
         self.assertIn("notes", text)
 
@@ -264,7 +264,7 @@ class TestOurOwnDatabasesAreStillRebuilt(unittest.TestCase):
 
     @unittest.skipUnless(os.name == "posix", "POSIX sticky directories only")
     def test_a_database_directly_in_sticky_tmp_is_refused(self):
-        path = Path("/tmp") / f"claude-usage-sticky-{os.getpid()}-{id(self)}.db"
+        path = Path("/tmp") / f"codex-claude-usage-sticky-{os.getpid()}-{id(self)}.db"
         self.addCleanup(
             lambda: [candidate.unlink(missing_ok=True) for candidate in (
                 path, path.with_name(path.name + "-wal"),
@@ -395,8 +395,8 @@ class TestOurOwnDatabasesAreStillRebuilt(unittest.TestCase):
         -- replicated that day with the action's own fetch (`git init`, `git
         fetch --no-tags --depth=1 <sha>`, `git checkout FETCH_HEAD`): `skipped
         'no tags in this checkout'`. A skipped guard reads as a pass, which is
-        the same hazard `CLAUDE_USAGE_REQUIRE_JS` and
-        `CLAUDE_USAGE_REQUIRE_BROWSER` exist for, and this one had no such
+        the same hazard `CODEX_CLAUDE_USAGE_REQUIRE_JS` and
+        `CODEX_CLAUDE_USAGE_REQUIRE_BROWSER` exist for, and this one had no such
         escape hatch. The workflow file is not the only fix and was not the one
         taken: the snapshot below runs everywhere, including in a tarball with
         no `.git` at all.

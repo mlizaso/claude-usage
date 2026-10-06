@@ -56,6 +56,7 @@ jobs:
       # re-run it is the commit that DATED the heading, which is what the
       # CHANGELOG section actually describes.
       release_sha: ${{ steps.detect.outputs.release_sha }}
+      vsix_filename: ${{ steps.build.outputs.vsix_filename }}
 
     steps:
       # workflow_dispatch cannot be branch-restricted in `on:`, and the Actions
@@ -313,9 +314,11 @@ jobs:
               return
             fi
 
+            # Historical retries must include the package's previous path,
+            # or they could inherit CI from before a runtime-only change.
             relevant=$(git log -1 --format=%H "$SHA" -- \
               vscode-extension docs/VS-CODE-EXTENSION.md \
-              ':(top,glob)*.py' claude_usage web vendor \
+              ':(top,glob)*.py' codex_claude_usage claude_usage web vendor \
               .github/workflows/extension-ci.yml)
             [ -n "$relevant" ] || return
 
@@ -411,6 +414,7 @@ jobs:
           cache-dependency-path: vscode-extension/package-lock.json
 
       - name: Build the .vsix
+        id: build
         if: steps.detect.outputs.version != ''
         working-directory: vscode-extension
         env:
@@ -435,12 +439,17 @@ jobs:
           npm run package
 
           name=$(node -p "require('./package.json').name")
+          case "$name" in
+            codex-claude-usage|claude-usage|claude-usage-private) ;;
+            *) echo "::error::Unexpected extension package identity."; exit 1 ;;
+          esac
           vsix="${name}-${want}.vsix"
-          if [ ! -f "$vsix" ]; then
+          if [ -L "$vsix" ] || [ ! -f "$vsix" ]; then
             echo "::error::Expected $vsix but it wasn't produced."
             exit 1
           fi
           echo "VSIX=vscode-extension/$vsix" >> "$GITHUB_ENV"
+          echo "vsix_filename=$vsix" >> "$GITHUB_OUTPUT"
           echo "Built $vsix."
 
       - name: Prepare release notes
@@ -450,6 +459,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir release-output
+          # Keep the manifest-derived filename when retrying a historical
+          # build; a new filename must not disguise an old extension identity.
           cp "$VSIX" release-output/
           awk -v ver="$VERSION" '
             /^## v[0-9]/ { if (started) exit; if ($2 == ver) started=1 }
@@ -464,7 +475,7 @@ jobs:
         if: steps.detect.outputs.version != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: claude-usage-release-${{ github.sha }}
+          name: codex-claude-usage-release-${{ github.sha }}
           path: release-output/
           if-no-files-found: error
           retention-days: 1
@@ -480,18 +491,27 @@ jobs:
       - name: Download reviewed release payload
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: claude-usage-release-${{ github.sha }}
+          name: codex-claude-usage-release-${{ github.sha }}
           path: release-output
 
       - name: Create matching tag and GitHub release
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
           RELEASE_SHA: ${{ needs.prepare.outputs.release_sha }}
+          VSIX_FILENAME: ${{ needs.prepare.outputs.vsix_filename }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          if ! [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid reviewed release version."
+            exit 1
+          fi
           want="${VERSION#v}"
-          vsix="release-output/claude-usage-${want}.vsix"
+          case "$VSIX_FILENAME" in
+            "codex-claude-usage-${want}.vsix"|"claude-usage-${want}.vsix"|"claude-usage-private-${want}.vsix") ;;
+            *) echo "::error::Invalid reviewed VSIX filename."; exit 1 ;;
+          esac
+          vsix="release-output/$VSIX_FILENAME"
           if [ -L "$vsix" ] || [ -L release-output/notes.md ] \
             || [ ! -f "$vsix" ] || [ ! -s release-output/notes.md ]; then
             echo "::error::The reviewed release payload is incomplete."

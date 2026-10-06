@@ -25,7 +25,7 @@ selected in each. All data is **invented**; click an image to open it at full si
 Sessions, tokens, cache usage and an API-equivalent cost estimate, followed by
 the daily usage chart. Use the model and date filters to explore a period.
 
-[![Claude Code selected beside the Codex source button, with synthetic usage totals and a daily token chart](https://raw.githubusercontent.com/mlizaso/claude-usage/main/docs/screenshot.png)](https://raw.githubusercontent.com/mlizaso/claude-usage/main/docs/screenshot.png)
+[![Claude Code selected beside the Codex source button, with synthetic usage totals and a daily token chart](https://raw.githubusercontent.com/mlizaso/codex-claude-usage/main/docs/screenshot.png)](https://raw.githubusercontent.com/mlizaso/codex-claude-usage/main/docs/screenshot.png)
 
 ### Codex · costs and reasoning tokens
 
@@ -34,7 +34,7 @@ breakdown. The capture below shows Codex selected while Claude Code remains
 available alongside it. Costs are estimates from the bundled rate tables, not
 an account bill; reasoning tokens are already included in output tokens.
 
-[![Codex selected beside the Claude Code source button, with synthetic GPT model costs and reasoning-token counts](https://raw.githubusercontent.com/mlizaso/claude-usage/main/docs/usage2.png)](https://raw.githubusercontent.com/mlizaso/claude-usage/main/docs/usage2.png)
+[![Codex selected beside the Claude Code source button, with synthetic GPT model costs and reasoning-token counts](https://raw.githubusercontent.com/mlizaso/codex-claude-usage/main/docs/usage2.png)](https://raw.githubusercontent.com/mlizaso/codex-claude-usage/main/docs/usage2.png)
 
 **What you can see:** usage totals, charts and metadata such as project names,
 branches and session titles, scoped to the selected assistant.
@@ -69,8 +69,8 @@ Requires **Python 3.11+**. The Python runtime uses only the standard library;
 Chart.js is bundled locally. No API key is needed to read usage logs.
 
 ```bash
-git clone https://github.com/mlizaso/claude-usage.git
-cd claude-usage
+git clone https://github.com/mlizaso/codex-claude-usage.git
+cd codex-claude-usage
 python3 cli.py dashboard
 ```
 
@@ -81,8 +81,8 @@ dashboard access token.
 ### Install with uv, pipx or pip
 
 ```bash
-uv tool install git+https://github.com/mlizaso/claude-usage.git
-claude-usage dashboard
+uv tool install git+https://github.com/mlizaso/codex-claude-usage.git
+codex-claude-usage dashboard
 ```
 
 `pipx install` accepts the same Git URL. For `pip`, install inside a virtual
@@ -91,18 +91,30 @@ environment. These commands install this repository directly.
 ### Homebrew (macOS / Linux)
 
 ```bash
-brew tap mlizaso/claude-usage https://github.com/mlizaso/claude-usage.git
-brew install --HEAD mlizaso/claude-usage/claude-usage
-claude-usage dashboard
+brew tap mlizaso/codex-claude-usage https://github.com/mlizaso/codex-claude-usage.git
+brew install --HEAD mlizaso/codex-claude-usage/codex-claude-usage
+codex-claude-usage dashboard
 ```
 
 The formula builds the current `main` branch. Review changes before upgrading.
 
 ### VS Code
 
-Download this project's `.vsix` from [GitHub Releases](https://github.com/mlizaso/claude-usage/releases),
+Download this project's `.vsix` from [GitHub Releases](https://github.com/mlizaso/codex-claude-usage/releases),
 or build it from source. Python 3.11+ is required on the machine running VS Code.
 See the [extension guide](VS-CODE-EXTENSION.md).
+
+When upgrading from the previous project name, reinstall using the commands
+above. The CLI is now `codex-claude-usage`; environment variables use
+`CODEX_CLAUDE_USAGE_*` and extension settings use `codexClaudeUsage.*`. Update
+custom configuration to those names. Existing host transcript and usage database
+locations are unchanged. Stop any running dashboard or limits server before
+launching the renamed build. For Docker deployments, stop the previous app and
+proxy containers to free the published port, and use the new default container
+and network names or fresh custom names. Existing objects carry the previous
+ownership labels and are not reused. Set `CODEX_CLAUDE_USAGE_DOCKER_DATA_DIR`
+to your existing data directory to retain stored history. The extension guide
+covers removal of previous builds.
 
 ## What this tracks
 
@@ -173,10 +185,10 @@ dashboard reports a partial refresh if a container or limit prevents completion.
 Disable discovery before launching the host application with:
 
 ```bash
-CLAUDE_USAGE_DOCKER=0 python3 cli.py dashboard
+CODEX_CLAUDE_USAGE_DOCKER=0 python3 cli.py dashboard
 ```
 
-In PowerShell, set `$env:CLAUDE_USAGE_DOCKER = "0"` before launching.
+In PowerShell, set `$env:CODEX_CLAUDE_USAGE_DOCKER = "0"` before launching.
 Python API callers opt in with `scan(..., include_docker=True)`.
 
 ### Run the dashboard in Docker
@@ -188,9 +200,9 @@ bash scripts/run-docker.sh
 ```
 
 The launcher builds this checkout and prints an authenticated URL on
-`http://localhost:9898`. Change the port with `CLAUDE_USAGE_DOCKER_PORT`.
+`http://localhost:9898`. Change the port with `CODEX_CLAUDE_USAGE_DOCKER_PORT`.
 It mounts only Claude's `projects` directory read-only and uses
-`~/.local/share/claude-usage-docker` for its database. A mount-free proxy
+`~/.local/share/codex-claude-usage-docker` for its database. A mount-free proxy
 publishes the isolated application on host loopback. It drops capabilities,
 uses read-only container filesystems, and keeps the transcript reader on an
 internal network without an outbound route.
@@ -198,7 +210,7 @@ internal network without an outbound route.
 **The supplied launcher mounts Claude Code logs only.** Codex parsing is
 included in the image, but using it in this deployment requires a reviewed
 launcher change to add `~/.codex/sessions` as a read-only mount at
-`/home/claudeusage/.codex/sessions`. It is not an existing launcher option.
+`/home/codexclaudeusage/.codex/sessions`. It is not an existing launcher option.
 Use the host application for automatic collection of both assistants.
 The isolated container has no host Docker socket and cannot discover other
 containers. Do not mount credentials or your entire home directory.
@@ -215,21 +227,21 @@ python3 cli.py url --open
 python3 cli.py scan --projects-dir /path/to/additional/transcripts
 ```
 
-Installed users can replace `python3 cli.py` with `claude-usage`.
+Installed users can replace `python3 cli.py` with `codex-claude-usage`.
 Reports accept `--source claude`, `codex`, or `all`. Run a command with
 `--help` for its options. The default database is `~/.claude/usage.db`.
 
 | Environment variable | Purpose |
 |---|---|
-| `CLAUDE_USAGE_DB` | Choose a different private database path |
-| `CLAUDE_USAGE_PROJECTS_DIRS` | Add roots separated by `:` on POSIX or `;` on Windows |
-| `CLAUDE_USAGE_DOCKER=0` | Disable local container discovery |
-| `CLAUDE_USAGE_RATES` | Path to a local JSON rate-override file |
+| `CODEX_CLAUDE_USAGE_DB` | Choose a different private database path |
+| `CODEX_CLAUDE_USAGE_PROJECTS_DIRS` | Add roots separated by `:` on POSIX or `;` on Windows |
+| `CODEX_CLAUDE_USAGE_DOCKER=0` | Disable local container discovery |
+| `CODEX_CLAUDE_USAGE_RATES` | Path to a local JSON rate-override file |
 | `HOST`, `PORT` | Dashboard loopback address and port |
-| `CLAUDE_USAGE_THRESHOLDS` | Path to saved quota-alert thresholds |
+| `CODEX_CLAUDE_USAGE_THRESHOLDS` | Path to saved quota-alert thresholds |
 
 Launchers use explicit environment allowlists. In particular the Docker
-launcher and VS Code extension do not forward `CLAUDE_USAGE_PROJECTS_DIRS`.
+launcher and VS Code extension do not forward `CODEX_CLAUDE_USAGE_PROJECTS_DIRS`.
 
 ## How it works
 
@@ -270,7 +282,7 @@ it does not open the usage database. See [Limits backend](LIMITS-BACKEND.md).
 The server binds to loopback, authenticates data routes, checks Host and Origin,
 and serves bundled scripts under a restrictive Content Security Policy.
 It sends no telemetry. Optional live Anthropic quota requests require both
-`CLAUDE_USAGE_LIVE_LIMITS=1` and an explicit credential source.
+`CODEX_CLAUDE_USAGE_LIVE_LIMITS=1` and an explicit credential source.
 
 **Local does not mean anonymous.** The database, snapshots, CSV exports and
 screenshots can contain project names, branches, session titles, identifiers
@@ -288,7 +300,7 @@ such as `opus`, `sonnet`, `haiku`, `gpt-5` or `codex`.
 An unknown model has no rate: the dashboard displays `n/a` rather than `$0.00`
 and CSV cost cells are empty. Terminal reports currently print `cost=$0.0000`
 for that case; it means no known rate. A local model whose name contains a
-known keyword can inherit that family's estimate. Use `CLAUDE_USAGE_RATES`
+known keyword can inherit that family's estimate. Use `CODEX_CLAUDE_USAGE_RATES`
 to set your own rates, in USD per million tokens:
 
 ```json
@@ -367,7 +379,7 @@ Local overrides take precedence over built-in rates.
 ### New models and pricing updates
 
 New IDs are discovered from transcripts automatically. Adding a price needs
-a separate verified source. Edit `claude_usage/pricing.py`, then run:
+a separate verified source. Edit `codex_claude_usage/pricing.py`, then run:
 
 ```bash
 python3 scripts/generate-pricing-assets.py
@@ -386,7 +398,7 @@ support, local Docker collection, and additional privacy and reliability control
 Contributions are welcome. See [Contributing](CONTRIBUTING.md) for setup,
 validation and safe bug reports, and [Security](SECURITY.md) for vulnerabilities.
 
-The project uses the [MIT license](https://github.com/mlizaso/claude-usage/blob/main/LICENSE).
+The project uses the [MIT license](https://github.com/mlizaso/codex-claude-usage/blob/main/LICENSE).
 You may use, modify and redistribute it, including commercially, while keeping
 the copyright and license notice. The software is provided without warranty.
 The original author's copyright and upstream contributor credits are retained.
@@ -397,13 +409,13 @@ This is an independent project, unaffiliated with Anthropic or OpenAI.
 
 | File | Purpose |
 |---|---|
-| `claude_usage/` | Parsers, database, reports, HTTP services and safety helpers |
+| `codex_claude_usage/` | Parsers, database, reports, HTTP services and safety helpers |
 | `cli.py` | Checkout launcher |
 | `web/` | Dashboard and standalone quota-page assets |
 | `vendor/` | Bundled Chart.js and its license |
 | `vscode-extension/` | VS Code UI extension and tests |
 | `Dockerfile`, `scripts/run-docker.sh`, `proxy.py` | Isolated Docker deployment |
-| `Formula/claude-usage.rb` | Homebrew formula |
+| `Formula/codex-claude-usage.rb` | Homebrew formula |
 | `tests/` | Synthetic Python, JavaScript and integration tests |
 
 ---

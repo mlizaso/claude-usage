@@ -90,7 +90,7 @@ def call_with_total_deadline(operation, timeout):
 
     threading.Thread(
         target=run,
-        name="claude-usage-loopback-probe",
+        name="codex-claude-usage-loopback-probe",
         daemon=True,
     ).start()
     if not done.wait(budget):

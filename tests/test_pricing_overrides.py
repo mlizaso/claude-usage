@@ -1,6 +1,6 @@
 """Rates a user supplies, and the tier that resolves a dated model id.
 
-`CLAUDE_USAGE_RATES` is documented in README.md and in the CHANGELOG, and until
+`CODEX_CLAUDE_USAGE_RATES` is documented in README.md and in the CHANGELOG, and until
 these tests existed nothing anywhere in the suite mentioned it — so "your rates
 are used" was an unverified claim on both surfaces that quote a price. Three
 separate defects lived in that gap:
@@ -262,8 +262,8 @@ class TestRateOverridesReachTheTerminalReports(unittest.TestCase):
         # UnicodeDecodeError is made of. No errors= : a mismatch should fail
         # loudly rather than smuggle mojibake into an assertion.
         env["PYTHONIOENCODING"] = "utf-8"
-        env["CLAUDE_USAGE_DB"] = str(self.db_path)
-        env.pop("CLAUDE_USAGE_RATES", None)
+        env["CODEX_CLAUDE_USAGE_DB"] = str(self.db_path)
+        env.pop("CODEX_CLAUDE_USAGE_RATES", None)
         rate_file = None
         if rates is not None:
             handle = tempfile.NamedTemporaryFile(
@@ -271,7 +271,7 @@ class TestRateOverridesReachTheTerminalReports(unittest.TestCase):
             json.dump(rates, handle)
             handle.close()
             rate_file = handle.name
-            env["CLAUDE_USAGE_RATES"] = rate_file
+            env["CODEX_CLAUDE_USAGE_RATES"] = rate_file
         try:
             done = subprocess.run(
                 [sys.executable, "cli.py", "stats"],
@@ -298,8 +298,8 @@ class TestRateOverridesReachTheTerminalReports(unittest.TestCase):
     def test_unreadable_override_file_leaves_the_built_ins_alone(self):
         env = dict(os.environ)
         env["PYTHONIOENCODING"] = "utf-8"  # see _stats: pin both ends
-        env["CLAUDE_USAGE_DB"] = str(self.db_path)
-        env["CLAUDE_USAGE_RATES"] = str(Path(self.tmp.name) / "nope.json")
+        env["CODEX_CLAUDE_USAGE_DB"] = str(self.db_path)
+        env["CODEX_CLAUDE_USAGE_RATES"] = str(Path(self.tmp.name) / "nope.json")
         done = subprocess.run(
             [sys.executable, "cli.py", "stats"],
             cwd=REPO_ROOT, capture_output=True, text=True,

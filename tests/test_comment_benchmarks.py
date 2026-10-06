@@ -22,7 +22,7 @@ TILDE = "~"
 _BENCHMARK = re.compile(
     r"~\s*\d+(?:\.\d+)?(?:\s*[-–]\s*\d+(?:\.\d+)?)?\s*(?:s|sec|secs|seconds)\b")
 
-_SCANNED_GLOBS = ("*.py", "claude_usage/*.py", "tests/*.py", "web/**/*.js",
+_SCANNED_GLOBS = ("*.py", "codex_claude_usage/*.py", "tests/*.py", "web/**/*.js",
                   "web/**/*.css", "web/*.html", "docs/*.md")
 
 # No historical personal measurements are exempted.

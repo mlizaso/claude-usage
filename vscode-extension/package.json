@@ -1,5 +1,5 @@
 {
-  "name": "claude-usage",
+  "name": "codex-claude-usage",
   "private": true,
   "displayName": "Codex / Claude Usage",
   "description": "Explore local Claude Code and Codex tokens, costs and sessions, including logs collected from local Docker containers. No telemetry.",
@@ -10,10 +10,10 @@
     "url": "https://www.productcompass.pm"
   },
   "license": "MIT",
-  "homepage": "https://github.com/mlizaso/claude-usage",
+  "homepage": "https://github.com/mlizaso/codex-claude-usage",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mlizaso/claude-usage"
+    "url": "https://github.com/mlizaso/codex-claude-usage"
   },
   "engines": {
     "vscode": "^1.94.0"
@@ -43,55 +43,55 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "claudeUsageSidebar",
+          "id": "codexClaudeUsageSidebar",
           "title": "Codex / Claude Usage",
           "icon": "resources/icon.svg"
         }
       ]
     },
     "views": {
-      "claudeUsageSidebar": [
+      "codexClaudeUsageSidebar": [
         {
           "type": "webview",
-          "id": "claudeUsage.dashboard",
+          "id": "codexClaudeUsage.dashboard",
           "name": "Dashboard"
         }
       ]
     },
     "commands": [
       {
-        "command": "claudeUsage.open",
+        "command": "codexClaudeUsage.open",
         "title": "Codex / Claude Usage: Open Dashboard"
       },
       {
-        "command": "claudeUsage.rescan",
+        "command": "codexClaudeUsage.rescan",
         "title": "Codex / Claude Usage: Rescan Transcripts"
       },
       {
-        "command": "claudeUsage.restart",
+        "command": "codexClaudeUsage.restart",
         "title": "Codex / Claude Usage: Restart Server"
       },
       {
-        "command": "claudeUsage.showLogs",
+        "command": "codexClaudeUsage.showLogs",
         "title": "Codex / Claude Usage: Show Logs"
       }
     ],
     "configuration": {
       "title": "Codex / Claude Usage",
       "properties": {
-        "claudeUsage.pythonPath": {
+        "codexClaudeUsage.pythonPath": {
           "type": "string",
           "default": "",
           "scope": "machine",
           "description": "Absolute path to a Python interpreter (>=3.11). Empty = auto-discover, in absolute PATH entries only: python3, then python (on Windows: python.exe, then python3.exe, then python). While this is set your PATH is not searched at all."
         },
-        "claudeUsage.cliPath": {
+        "codexClaudeUsage.cliPath": {
           "type": "string",
           "default": "",
           "scope": "machine",
-          "description": "Absolute path to an explicitly trusted custom Python launcher file, or to a directory containing cli.py. Empty = use the bundled source. If set but unusable, the extension warns and runs the bundled copy anyway — unlike claudeUsage.pythonPath, which stops rather than substituting. Workspace and PATH scripts are never auto-executed."
+          "description": "Absolute path to an explicitly trusted custom Python launcher file, or to a directory containing cli.py. Empty = use the bundled source. If set but unusable, the extension warns and runs the bundled copy anyway — unlike codexClaudeUsage.pythonPath, which stops rather than substituting. Workspace and PATH scripts are never auto-executed."
         },
-        "claudeUsage.port": {
+        "codexClaudeUsage.port": {
           "type": "number",
           "default": 0,
           "scope": "machine",

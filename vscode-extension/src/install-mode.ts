@@ -5,7 +5,7 @@ import * as path from "node:path";
  * Why no `cli.py` could be run.
  *
  * `kind: "none"` used to be the whole answer, and it collapsed two failures a
- * user has to be told apart: a `claudeUsage.cliPath` setting that names
+ * user has to be told apart: a `codexClaudeUsage.cliPath` setting that names
  * something unusable, versus no setting at all and no bundled copy. The single
  * message printed for both told the user to "clear it to fall back to the
  * bundled sources" — advice that cannot work in *either* case, because reaching
@@ -38,7 +38,7 @@ export type InstallMode =
       cliPy: string;
       pythonHint?: string;
       /**
-       * Set only when a non-empty `claudeUsage.cliPath` was rejected and the
+       * Set only when a non-empty `codexClaudeUsage.cliPath` was rejected and the
        * BUNDLED copy is being run in its place. Callers must report it: the
        * bundled copy is the one this extension shipped with, not the user's
        * checkout, so running it silently makes an edited fork look inert.
@@ -48,12 +48,12 @@ export type InstallMode =
   | InstallFailure;
 
 interface ResolveOptions {
-  /** Value of the `claudeUsage.cliPath` setting (empty string if unset). */
+  /** Value of the `codexClaudeUsage.cliPath` setting (empty string if unset). */
   configuredCliPath: string;
   /** Path to the bundled `python/cli.py` shipped inside the .vsix.
    *  Always present in a packaged extension; absent only in tests. This is
    *  the default-and-most-reliable mode for local/private installs — users only
-   *  need Python on PATH, no separate claude-usage install. */
+   *  need Python on PATH, no separate codex-claude-usage install. */
   bundledCliPath?: string;
 }
 

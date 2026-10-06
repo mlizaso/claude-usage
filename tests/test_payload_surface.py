@@ -411,7 +411,7 @@ class TestTheAccessMatcherCanFail(unittest.TestCase):
         # vscode-extension/src/sidebar.ts — the word inside "resources"
         '        ? [vscode.Uri.joinPath(this.extensionUri, "resources")]',
         # vscode-extension/src/extension.ts
-        '    "Could not find the claude-usage sources bundled in this private extension.",',
+        '    "Could not find the codex-claude-usage sources bundled in this private extension.",',
         # web/js/70-bootstrap.js
         "  let sources = [];",                                     # same-named local
         "  sourceTurns = new Map(sources.map(s => [s.source, s.turns]));",
@@ -951,7 +951,7 @@ def _payload_producers():
     `claude_limits` rather than a variable.
     """
     tree = ast.parse(
-        (REPO_ROOT / "claude_usage" / "dashboard_data.py").read_text(
+        (REPO_ROOT / "codex_claude_usage" / "dashboard_data.py").read_text(
             encoding="utf-8"))
     fn = next(n for n in ast.walk(tree)
               if isinstance(n, ast.FunctionDef)
@@ -1008,7 +1008,7 @@ def _runs_sql(tree, name, seen=None):
 
 def _rollups_module_facts():
     """The module names rollups.py imports and the function names it calls."""
-    tree = ast.parse((REPO_ROOT / "claude_usage" / "rollups.py").read_text(
+    tree = ast.parse((REPO_ROOT / "codex_claude_usage" / "rollups.py").read_text(
         encoding="utf-8"))
     imported, called = set(), set()
     for node in ast.walk(tree):
@@ -1074,7 +1074,7 @@ class TestEveryPayloadSectionHasADeclaredOwner(PayloadFixture):
         parameter that is lying about what it does.
         """
         tree = ast.parse(
-            (REPO_ROOT / "claude_usage" / "dashboard_data.py").read_text(
+            (REPO_ROOT / "codex_claude_usage" / "dashboard_data.py").read_text(
                 encoding="utf-8"))
         producers = _payload_producers()
         for key, reason in sorted(DATABASE_STATE_SECTIONS.items()):
@@ -1176,7 +1176,7 @@ class TestEveryPayloadSectionHasADeclaredOwner(PayloadFixture):
         about who owns what.
         """
         tree = ast.parse(
-            (REPO_ROOT / "claude_usage" / "dashboard_data.py").read_text(
+            (REPO_ROOT / "codex_claude_usage" / "dashboard_data.py").read_text(
                 encoding="utf-8"))
         producers = _payload_producers()
         for key in sorted(QUOTA_SECTIONS):
@@ -1272,7 +1272,7 @@ class TestTheCacheClassifiesEveryPayloadField(PayloadFixture):
         rebuilding a pure field is invisible.
         """
         tree = ast.parse(
-            (REPO_ROOT / "claude_usage" / "dashboard_data.py").read_text(
+            (REPO_ROOT / "codex_claude_usage" / "dashboard_data.py").read_text(
                 encoding="utf-8"))
         producers = _payload_producers()
         for key in dashboard_data.LIVE_PAYLOAD_FIELDS:

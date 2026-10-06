@@ -1,10 +1,10 @@
 """Independent fixtures for the complete schemas emitted by released builds.
 
-Production keeps its own fingerprints in :mod:`claude_usage.db`.  Tests do not
+Production keeps its own fingerprints in :mod:`codex_claude_usage.db`.  Tests do not
 derive these snapshots from that implementation: an accidentally weakened or
 edited production fingerprint must disagree with this release census and fail.
 Other upgrade tests use this module instead of inventing partial ``turns``
-tables that no released claude-usage database ever contained.
+tables that no released codex-claude-usage database ever contained.
 """
 
 

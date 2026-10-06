@@ -605,7 +605,7 @@ def collect(db_path, *, local_roots=()):
     CLI/VSIX processes safe: readers see a complete old or new transcript, and
     the scanner's existing identity/prefix checks detect concurrent replacement.
     """
-    if os.environ.get("CLAUDE_USAGE_DOCKER", "1").lower() in ("0", "false", "off"):
+    if os.environ.get("CODEX_CLAUDE_USAGE_DOCKER", "1").lower() in ("0", "false", "off"):
         _set_status("disabled")
         return []
     _set_status("scanning")

@@ -7,7 +7,7 @@ https://developers.openai.com/api/docs/pricing
 
 import unittest
 
-from claude_usage.pricing import (
+from codex_claude_usage.pricing import (
     calc_cost, calc_cost_parts, get_pricing, is_estimated, is_long_context,
 )
 

@@ -6,6 +6,7 @@ symlinks rather than second copies. The Chart.js license is the sole
 content-bearing exception: it belongs beside the vendored code it licenses.
 """
 
+import json
 import os
 import re
 import unittest
@@ -122,6 +123,15 @@ def _broken_local_links(source, logical_parent=None):
 
 
 class TestDocumentationLayout(unittest.TestCase):
+    def test_documented_extension_settings_match_the_manifest(self):
+        manifest = json.loads((ROOT / "vscode-extension" / "package.json").read_text(
+            encoding="utf-8"))
+        settings = set(manifest["contributes"]["configuration"]["properties"])
+        text = (DOCS / "VS-CODE-EXTENSION.md").read_text(encoding="utf-8")
+        documented = set(re.findall(
+            r"`(codex[A-Za-z]*Usage\.[A-Za-z][A-Za-z0-9]*)`", text))
+        self.assertEqual(documented, settings)
+
     def test_every_project_document_has_one_canonical_home(self):
         expected_outside_docs = set(COMPATIBILITY_LINKS) | {
             "vendor/LICENSE.chartjs.md"
@@ -158,7 +168,7 @@ class TestDocumentationLayout(unittest.TestCase):
                     self.assertIn(marker, text)
 
     def test_agent_guide_names_every_current_database_table(self):
-        db_source = (ROOT / "claude_usage" / "db.py").read_text(
+        db_source = (ROOT / "codex_claude_usage" / "db.py").read_text(
             encoding="utf-8")
         expected = set(re.findall(
             r"CREATE TABLE IF NOT EXISTS\s+([a-z_]+)", db_source

@@ -1,7 +1,7 @@
 """Tests that pricing projections never drift from the Python source.
 
 Costs are computed in Python and mirrored in the browser. The canonical table
-and effective-date policy live in `claude_usage.pricing`; the JavaScript and
+and effective-date policy live in `codex_claude_usage.pricing`; the JavaScript and
 Markdown tables are generated projections. A stale generated file would make
 `cli.py stats`, the dashboard, and the published documentation disagree, so
 the generator's check mode is part of this parity suite.
@@ -452,8 +452,8 @@ class TestAnOverWideRateDoesNotKillTheCli(unittest.TestCase):
         # — cp1252 on windows-latest — and mixing the two raises
         # UnicodeDecodeError. No errors= : a mismatch should fail loudly.
         env["PYTHONIOENCODING"] = "utf-8"
-        env["CLAUDE_USAGE_DB"] = str(self.tmp / "usage.db")
-        env["CLAUDE_USAGE_RATES"] = str(self.rates)
+        env["CODEX_CLAUDE_USAGE_DB"] = str(self.tmp / "usage.db")
+        env["CODEX_CLAUDE_USAGE_RATES"] = str(self.rates)
         done = subprocess.run([sys.executable, "cli.py", "stats"], cwd=REPO_ROOT,
                               capture_output=True, text=True, encoding="utf-8",
                               env=env)
@@ -464,7 +464,7 @@ class TestAnOverWideRateDoesNotKillTheCli(unittest.TestCase):
 
 @requires_node
 class TestUserSuppliedRatesReachThePage(_PricingTableRestored):
-    """`CLAUDE_USAGE_RATES` has to move the page's money, not only the CLI's.
+    """`CODEX_CLAUDE_USAGE_RATES` has to move the page's money, not only the CLI's.
 
     The dashboard computes every figure in the browser from its own copy of the
     table, so an override that reached `pricing.PRICING` and stopped there made
@@ -597,7 +597,7 @@ class TestThePageAppliesWhatTheServerInjects(unittest.TestCase):
                 "calcCost('gpt-5.6-sol', 100000, 0, 0, 0)"),
             0.1, places=9,
             msg="the page ignored the rates the server injected, so "
-                "CLAUDE_USAGE_RATES moves the CLI's money and not the page's")
+                "CODEX_CLAUDE_USAGE_RATES moves the CLI's money and not the page's")
 
     def test_a_page_loaded_without_them_bills_at_the_built_in_rate(self):
         self.assertAlmostEqual(
@@ -629,7 +629,7 @@ class TestTheInjectedRatesAreAppliedAtLoad(unittest.TestCase):
             dashboard.HTML_TEMPLATE,
             r"(?m)^applyRateOverrides\(APP_CONFIG\.rate_overrides\);$",
             "the page defines applyRateOverrides but never calls it with the "
-            "rates the server injects, so CLAUDE_USAGE_RATES moves the CLI's "
+            "rates the server injects, so CODEX_CLAUDE_USAGE_RATES moves the CLI's "
             "money and not the page's.",
         )
 

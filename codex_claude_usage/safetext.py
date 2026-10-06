@@ -42,7 +42,7 @@ def invocation():
     """How to spell this command back to the user, on the surface they used.
 
     Three of the five delivery surfaces -- pip, Homebrew and the .vsix -- put a
-    `claude-usage` console script on PATH and no `cli.py` anywhere the reader
+    `codex-claude-usage` console script on PATH and no `cli.py` anywhere the reader
     can reach, so every "run: python cli.py scan" printed there names a command
     that does not exist. The checkout carries the wrapper; the Docker image
     carries only the package, and its advice has to name `docker exec` so the
@@ -68,15 +68,15 @@ def invocation():
     # `<libexec>/cli.py` and looks exactly like a git checkout -- one of the
     # three surfaces this function exists for was reporting the other two's
     # spelling. Only the shim knows the name on PATH, so it says so.
-    declared = os.environ.get("CLAUDE_USAGE_INVOKED_AS", "").strip()
-    if declared == "claude-usage":
+    declared = os.environ.get("CODEX_CLAUDE_USAGE_INVOKED_AS", "").strip()
+    if declared == "codex-claude-usage":
         return declared
     if declared == "docker":
-        container = os.environ.get("CLAUDE_USAGE_DOCKER_CONTAINER", "")
+        container = os.environ.get("CODEX_CLAUDE_USAGE_DOCKER_CONTAINER", "")
         if (len(container) <= 128
                 and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", container)):
-            return f"docker exec {container} python3 -m claude_usage.cli"
-    return ("claude-usage" if Path(sys.argv[0]).name == "claude-usage"
+            return f"docker exec {container} python3 -m codex_claude_usage.cli"
+    return ("codex-claude-usage" if Path(sys.argv[0]).name == "codex-claude-usage"
             else "python cli.py")
 
 

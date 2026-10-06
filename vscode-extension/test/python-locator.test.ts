@@ -88,7 +88,7 @@ describe("python-locator", () => {
     it("tells a broken setting apart from an empty PATH", async () => {
       // The whole reason this function returns a union instead of
       // `string | undefined`. One `undefined` for both causes is what made the
-      // extension tell a user with a stale claudeUsage.pythonPath — and a
+      // extension tell a user with a stale codexClaudeUsage.pythonPath — and a
       // working python3 on PATH — to install Python on their PATH. The two
       // arms must be distinguishable by the caller with no re-derivation, so
       // assert the KINDS differ, not merely that both are falsy.
@@ -452,7 +452,7 @@ describe("python-locator", () => {
   // through __dirname (Vitest provides it despite the ESM transform) rather
   // than process.cwd() matters: two tests above chdir() into a temp dir.
   //
-  // package.json's `claudeUsage.pythonPath.description` — the other place a
+  // package.json's `codexClaudeUsage.pythonPath.description` — the other place a
   // user reads the order, and the one they are most likely to read, since it
   // is rendered beside the setting in the Settings UI — is covered by the
   // block below this one. It stated the POSIX order as if it were universal
@@ -502,7 +502,7 @@ describe("python-locator", () => {
       fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"),
     );
     const description: string =
-      pkg.contributes.configuration.properties["claudeUsage.pythonPath"].description;
+      pkg.contributes.configuration.properties["codexClaudeUsage.pythonPath"].description;
 
     /**
      * Every interpreter name the description mentions, in document order.

@@ -347,7 +347,7 @@ class TestThemePrecedence(unittest.TestCase):
     def test_the_choice_persists_and_survives_the_os_flipping(self):
         r = self._drive("globalThis.__osLight = true; toggleTheme();"
                         "globalThis.__osLight = false;"
-                        "return { after: activeTheme(), stored: localStorage.getItem('claude-usage-theme') };")
+                        "return { after: activeTheme(), stored: localStorage.getItem('codex-claude-usage-theme') };")
         self.assertEqual(r["after"], "dark")
         self.assertEqual(r["stored"], "dark")
 

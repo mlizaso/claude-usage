@@ -3,7 +3,7 @@
 # runtime ([project.dependencies] is empty) and the clone + `python cli.py` path
 # is unaffected.
 #
-# The version is read dynamically from claude_usage.scanner.VERSION so it stays a single
+# The version is read dynamically from codex_claude_usage.scanner.VERSION so it stays a single
 # source of truth (kept in lockstep with the CHANGELOG heading and the VS Code
 # extension's package.json by tests/test_version.py) — do NOT hardcode it here.
 [build-system]
@@ -11,7 +11,7 @@ requires = ["setuptools==83.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "claude-usage"
+name = "codex-claude-usage"
 dynamic = ["version"]
 description = "Codex / Claude Usage: local token, cost, and session dashboard"
 readme = "docs/README.md"
@@ -23,28 +23,28 @@ keywords = ["claude", "claude-code", "codex", "openai", "usage", "tokens", "cost
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/mlizaso/claude-usage"
-Issues = "https://github.com/mlizaso/claude-usage/issues"
+Homepage = "https://github.com/mlizaso/codex-claude-usage"
+Issues = "https://github.com/mlizaso/codex-claude-usage/issues"
 
 [project.scripts]
-claude-usage = "claude_usage.cli:main"
+codex-claude-usage = "codex_claude_usage.cli:main"
 
 # Runtime implementations live under one qualified package.  The historical
 # root module names are source-checkout aliases only and are deliberately not
 # installed, so a shared Python environment cannot collide on generic names
 # such as ``db`` or ``scanner``.
 [tool.setuptools]
-packages = ["claude_usage"]
+packages = ["codex_claude_usage"]
 
 [tool.setuptools.data-files]
-"share/claude-usage/vendor" = [
+"share/codex-claude-usage/vendor" = [
     "vendor/chart.umd.js",
     "vendor/LICENSE.chartjs.md",
 ]
 # The dashboard document is assembled from these at runtime (see
-# claude_usage.dashboard.load_html_template); without them the server cannot
+# codex_claude_usage.dashboard.load_html_template); without them the server cannot
 # render a page.
-"share/claude-usage/web" = [
+"share/codex-claude-usage/web" = [
     "web/index.html",
     "web/app.css",
     # Served by GET /icon.svg and masked into the header by app.css. It lives
@@ -55,7 +55,7 @@ packages = ["claude_usage"]
 ]
 # The application JS is split into ordered parts; the numeric prefixes decide
 # load order, so all of them must ship.
-"share/claude-usage/web/js" = [
+"share/codex-claude-usage/web/js" = [
     "web/js/00-core.js",
     "web/js/10-pricing.js",
     "web/js/20-format.js",
@@ -69,11 +69,11 @@ packages = ["claude_usage"]
     "web/js/60-export.js",
     "web/js/70-bootstrap.js",
 ]
-"share/claude-usage/web/limits" = [
+"share/codex-claude-usage/web/limits" = [
     "web/limits/index.html",
     "web/limits/app.css",
     "web/limits/app.js",
 ]
 
 [tool.setuptools.dynamic]
-version = { attr = "claude_usage.scanner.VERSION" }
+version = { attr = "codex_claude_usage.scanner.VERSION" }

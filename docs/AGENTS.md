@@ -6,7 +6,7 @@ Guidance for any coding agent working on this repository. "Claude Code" and
 ## Project shape
 
 Python 3.11+, standard library only at runtime. Implementations live in
-`claude_usage/`; root Python modules are exact-module compatibility aliases.
+`codex_claude_usage/`; root Python modules are exact-module compatibility aliases.
 Keep mutable globals and patches shared between those import paths.
 
 | Area | Modules |

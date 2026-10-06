@@ -86,7 +86,7 @@ def _config_dir_override(env=None):
 
 def config_path():
     """Where Claude Code keeps its config, honouring the usual overrides."""
-    override = os.environ.get("CLAUDE_USAGE_CONFIG")
+    override = os.environ.get("CODEX_CLAUDE_USAGE_CONFIG")
     if override:
         return Path(override)
     config_dir = _config_dir_override()

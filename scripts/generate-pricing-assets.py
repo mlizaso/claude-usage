@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Render the browser and documentation pricing projections.
 
-``claude_usage.pricing`` is the canonical pricing source.  The dashboard is a
+``codex_claude_usage.pricing`` is the canonical pricing source.  The dashboard is a
 classic-script bundle and the README is a published artifact, so neither can
 import Python at runtime.  This small, stdlib-only renderer keeps those two
 projections deterministic and gives CI a cheap ``--check`` drift guard.
@@ -31,7 +31,7 @@ def _load_source():
     # Import only after ROOT is known so the script works from any cwd and does
     # not require an installed package.
     sys.path.insert(0, str(ROOT))
-    from claude_usage import pricing
+    from codex_claude_usage import pricing
 
     return pricing
 
@@ -54,7 +54,7 @@ def _js_rate_object(rates):
 def _js_data(pricing):
     lines = [
         "const PRICING = {",
-        "  // Generated from claude_usage.pricing.PRICING; do not edit by hand.",
+        "  // Generated from codex_claude_usage.pricing.PRICING; do not edit by hand.",
     ]
     for model, rates in pricing.PRICING.items():
         # Canonical model ids are ordinary ASCII identifiers. JSON quoting is
@@ -69,7 +69,7 @@ def _js_data(pricing):
         "// makes every string an ordinary own key.",
         "Object.setPrototypeOf(PRICING, null);",
         "",
-        "// Generated from claude_usage.pricing.RATE_POLICIES; do not edit by hand.",
+        "// Generated from codex_claude_usage.pricing.RATE_POLICIES; do not edit by hand.",
         "const RATE_POLICIES = Object.freeze({",
     ])
     for model, policy in pricing.RATE_POLICIES.items():

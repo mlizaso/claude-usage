@@ -80,7 +80,7 @@ class HealthzStub(BaseHTTPRequestHandler):
     """Answers /healthz with whatever `body` the test asked for."""
 
     status = 200
-    body = {"service": "claude-usage", "status": "ok", "version": "test"}
+    body = {"service": "codex-claude-usage", "status": "ok", "version": "test"}
 
     def do_GET(self):
         payload = json.dumps(self.body).encode("utf-8")
@@ -192,7 +192,7 @@ class TestWhatTheMessageRecommends(unittest.TestCase):
 
     def test_an_identified_dashboard_with_no_link_says_why_it_must_be_stopped(self):
         text = "\n".join(self.lines_for(identified=True))
-        self.assertIn("claude-usage dashboard", text)
+        self.assertIn("codex-claude-usage dashboard", text)
         self.assertIn("unreachable", text)
 
     def test_an_unidentified_holder_is_never_blind_killed(self):
@@ -423,7 +423,7 @@ class TestTheSecondWayInAlsoScans(unittest.TestCase):
         real `~/.claude/projects`.
         """
         import ast
-        source = (Path(__file__).resolve().parent.parent / "claude_usage" /
+        source = (Path(__file__).resolve().parent.parent / "codex_claude_usage" /
                   "dashboard.py").read_text(encoding="utf-8")
         for node in ast.parse(source).body:
             if (isinstance(node, ast.If)
@@ -505,7 +505,7 @@ class TestTheSecondWayInAlsoScans(unittest.TestCase):
 
     def test_the_background_scan_targets_the_configured_database(self):
         """Not the module default. `DB_PATH` is read at call time so a patched
-        one — which is how every test and `CLAUDE_USAGE_DB` reach it — is what
+        one — which is how every test and `CODEX_CLAUDE_USAGE_DB` reach it — is what
         gets scanned."""
         import dashboard
         with tempfile.TemporaryDirectory() as tmp:
@@ -554,7 +554,7 @@ class TestTheSecondWayInRejectsArgumentsItCannotHonour(unittest.TestCase):
 
     def _main_block(self):
         import ast
-        source = (Path(__file__).resolve().parent.parent / "claude_usage" /
+        source = (Path(__file__).resolve().parent.parent / "codex_claude_usage" /
                   "dashboard.py").read_text(encoding="utf-8")
         for node in ast.parse(source).body:
             if (isinstance(node, ast.If) and isinstance(node.test, ast.Compare)
@@ -580,7 +580,7 @@ class TestTheSecondWayInRejectsArgumentsItCannotHonour(unittest.TestCase):
         self.assertLess(guard, serves, "the check must precede the bind")
 
     def test_the_message_points_at_the_entry_point_that_does_parse(self):
-        source = (Path(__file__).resolve().parent.parent / "claude_usage" /
+        source = (Path(__file__).resolve().parent.parent / "codex_claude_usage" /
                   "dashboard.py").read_text(encoding="utf-8")
         tail = source[source.index('if __name__ == "__main__":'):]
         self.assertIn("cli.py dashboard", tail)

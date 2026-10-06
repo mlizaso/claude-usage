@@ -6,10 +6,10 @@ this tool**. Two server surfaces ship today:
 
 | surface | status / command | needs a database? | needs the other? |
 |---|---|---|---|
-| the full dashboard | **shipped:** `claude-usage dashboard` | yes | no |
-| the quota-only page and limits API | **shipped:** `python -m claude_usage.limits_server` (installed) or `python limits_server.py` (checkout) | **no** | no |
+| the full dashboard | **shipped:** `codex-claude-usage dashboard` | yes | no |
+| the quota-only page and limits API | **shipped:** `python -m codex_claude_usage.limits_server` (installed) or `python limits_server.py` (checkout) | **no** | no |
 
-The separation is not cosmetic. `claude_usage/limits_server.py` imports neither
+The separation is not cosmetic. `codex_claude_usage/limits_server.py` imports neither
 `dashboard` nor `db`, which is asserted by a test in a child process rather than
 claimed — importing the dashboard would pull in the scanner, the database
 layer, both transcript parsers and the payload assembler, and "run the small
@@ -24,14 +24,14 @@ boundaries cannot drift.
 ### The quota page and limits API on their own
 
 ```
-python -m claude_usage.limits_server             # installed, 127.0.0.1:8081
-python -m claude_usage.limits_server --port 9100 # or set LIMITS_PORT
+python -m codex_claude_usage.limits_server             # installed, 127.0.0.1:8081
+python -m codex_claude_usage.limits_server --port 9100 # or set LIMITS_PORT
 python limits_server.py                           # source-checkout equivalent
 ```
 
 It prints one authenticated URL to **stdout** and everything else to stderr, so
 a launcher can take the first line. The token is random by default and may be
-pinned with `CLAUDE_USAGE_API_TOKEN` as described under deployment:
+pinned with `CODEX_CLAUDE_USAGE_API_TOKEN` as described under deployment:
 
 ```
 http://127.0.0.1:8081/#token=Qk9…
@@ -47,7 +47,7 @@ enabled live-limits mode described below is the only exception.
 ### The full dashboard
 
 ```
-claude-usage dashboard
+codex-claude-usage dashboard
 ```
 
 Unchanged. It serves the same limits API under its own port and token, and
@@ -71,7 +71,7 @@ unauthenticated and carry no quota data or token on this standalone limits
 surface. (The full dashboard's extension-launched `/healthz` is separately
 challenge-gated: the extension sends a fresh query challenge and verifies the
 HMAC `instance` response using a child-only health secret.) Every `/api/*` route needs the
-bearer token in `X-Claude-Usage-Token`. Requests are refused unless `Host` names this loopback
+bearer token in `X-Codex-Claude-Usage-Token`. Requests are refused unless `Host` names this loopback
 service; an explicit Host port must equal the port this process actually bound.
 A cross-origin `Origin` is rejected against that same authority. An **absent**
 `Origin` is allowed on purpose — `curl` and native front ends send none, and a
@@ -91,7 +91,7 @@ opener isolation. Quota data remains behind the authenticated JSON API.
 ```
 
 This `version` is the standalone limits-service contract version, not the
-`claude-usage` release number.
+`codex-claude-usage` release number.
 
 ### `GET /api/limits`
 
@@ -238,12 +238,12 @@ explicit and re-resolves the short-lived credential before every query:
 source scripts/live-limits-env.sh
 ```
 
-That script sets the network opt-in and a `CLAUDE_USAGE_TOKEN_COMMAND`. You can
+That script sets the network opt-in and a `CODEX_CLAUDE_USAGE_TOKEN_COMMAND`. You can
 instead supply a static token manually, though it expires quickly:
 
 ```bash
-export CLAUDE_USAGE_OAUTH_TOKEN="…"     # you supply it
-export CLAUDE_USAGE_LIVE_LIMITS=1       # and you ask for it
+export CODEX_CLAUDE_USAGE_OAUTH_TOKEN="…"     # you supply it
+export CODEX_CLAUDE_USAGE_LIVE_LIMITS=1       # and you ask for it
 ```
 
 The live request is also gated by the account's subscription authentication
@@ -255,8 +255,8 @@ parts of the local account file change. A live query can show a window that
 has not been written to that cache.
 
 **Where the credential comes from.** Either directly from
-`CLAUDE_USAGE_OAUTH_TOKEN`, or from the command you explicitly place in
-`CLAUDE_USAGE_TOKEN_COMMAND`. A valid command result wins when
+`CODEX_CLAUDE_USAGE_OAUTH_TOKEN`, or from the command you explicitly place in
+`CODEX_CLAUDE_USAGE_TOKEN_COMMAND`. A valid command result wins when
 both are set because Claude Code's access token is short-lived; if the command
 fails, times out, emits an invalid/empty token, or overflows the bounded first
 nonblank token-line prefix, the static environment token remains the fallback.
@@ -278,7 +278,7 @@ because sending a credential in clear text is worse than not answering.
 
 **The endpoint** defaults to `https://api.anthropic.com/api/oauth/usage`, read
 out of the Claude Code VS Code extension's own bundle rather than guessed — a
-fact about one version, not a contract, which is why `CLAUDE_USAGE_LIMITS_URL`
+fact about one version, not a contract, which is why `CODEX_CLAUDE_USAGE_LIMITS_URL`
 can override it.
 
 **Every failure falls back to the cache**: offline, refused, expired token, a
@@ -340,7 +340,7 @@ collision stays orphaned until the user saves the intended window. The alias is
 deliberately not persisted because a stale quota cache may omit the colliding
 window and cannot prove durable ownership.
 
-Override the location with `CLAUDE_USAGE_THRESHOLDS`.
+Override the location with `CODEX_CLAUDE_USAGE_THRESHOLDS`.
 
 ---
 
@@ -349,8 +349,8 @@ Override the location with `CLAUDE_USAGE_THRESHOLDS`.
 ### Both surfaces on one machine
 
 ```
-claude-usage dashboard &                 # 8080
-python -m claude_usage.limits_server &   # 8081
+codex-claude-usage dashboard &                 # 8080
+python -m codex_claude_usage.limits_server &   # 8081
 ```
 
 Independent processes, one shared threshold file. Stop either without affecting
@@ -365,8 +365,8 @@ Both mint a random token per process by default. To pin one — useful for a
 separate native client that must reconnect across restarts:
 
 ```
-export CLAUDE_USAGE_API_TOKEN="$(python3 -c 'import secrets;print(secrets.token_urlsafe(32))')"
-python -m claude_usage.limits_server
+export CODEX_CLAUDE_USAGE_API_TOKEN="$(python3 -c 'import secrets;print(secrets.token_urlsafe(32))')"
+python -m codex_claude_usage.limits_server
 ```
 
 Must match `[A-Za-z0-9_-]{32,128}`; anything else is ignored and a random token
@@ -380,9 +380,9 @@ unit:
 
 ```ini
 [Service]
-Environment=CLAUDE_USAGE_API_TOKEN=…
+Environment=CODEX_CLAUDE_USAGE_API_TOKEN=…
 Environment=LIMITS_PORT=8081
-ExecStart=/usr/bin/env python3 -m claude_usage.limits_server
+ExecStart=/usr/bin/env python3 -m codex_claude_usage.limits_server
 Restart=on-failure
 ```
 
@@ -395,21 +395,21 @@ On Linux Docker Engine — or Docker Desktop with host networking enabled — an
 actionable invocation is:
 
 ```bash
-data_dir="${CLAUDE_USAGE_DOCKER_LIMITS_DATA_DIR:-$HOME/.local/share/claude-usage-limits}"
+data_dir="${CODEX_CLAUDE_USAGE_DOCKER_LIMITS_DATA_DIR:-$HOME/.local/share/codex-claude-usage-limits}"
 mkdir -p "$data_dir"
 chmod 700 "$data_dir"
 docker run --rm --network host --read-only --cap-drop ALL \
   --security-opt no-new-privileges \
   --user "$(id -u):$(id -g)" \
-  --mount "type=bind,src=$HOME/.claude.json,dst=/home/claudeusage/.claude.json,readonly" \
+  --mount "type=bind,src=$HOME/.claude.json,dst=/home/codexclaudeusage/.claude.json,readonly" \
   --mount "type=bind,src=$data_dir,dst=/data" \
-  claude-usage python3 -m claude_usage.limits_server \
+  codex-claude-usage python3 -m codex_claude_usage.limits_server \
   --host 127.0.0.1 --port 8081
 ```
 
 The config mount is read-only and `/data` is the only writable application
 path. The image sets
-`CLAUDE_USAGE_THRESHOLDS=/data/limit-thresholds.json`, so the second mount
+`CODEX_CLAUDE_USAGE_THRESHOLDS=/data/limit-thresholds.json`, so the second mount
 persists settings while the application filesystem stays read-only. Default
 mode makes no outbound request; explicitly enabled live limits inherit host
 network access and should be treated accordingly.
@@ -433,11 +433,11 @@ network access and should be treated accordingly.
 ## The shipped quota-only front end
 
 The implementation lives in `web/limits/` and is assembled by
-`claude_usage/limits_web.py`. It makes the same two API calls a separate client
+`codex_claude_usage/limits_web.py`. It makes the same two API calls a separate client
 would need:
 
 ```js
-const H = { 'X-Claude-Usage-Token': TOKEN };
+const H = { 'X-Codex-Claude-Usage-Token': TOKEN };
 
 const limits = await (await fetch('/api/limits', { headers: H })).json();
 for (const w of limits.windows) {

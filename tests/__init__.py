@@ -36,7 +36,7 @@ from pathlib import Path
 
 # Ordinary fixture scans must never discover the developer's Docker daemon.
 # Docker collection tests explicitly enable it against their own fake transport.
-os.environ["CLAUDE_USAGE_DOCKER"] = "0"
+os.environ["CODEX_CLAUDE_USAGE_DOCKER"] = "0"
 
 # Resolved ONCE, at import, before anything redirects HOME -- so the guard keeps
 # pointing at the real tree even under a fixture that moves it.
@@ -81,7 +81,7 @@ class RealUserDataWrite(RuntimeError):
 def _refuse(path, how):
     raise RealUserDataWrite(
         f"a test tried to {how} {path}, which is the developer's real data. "
-        "Point CLAUDE_USAGE_DB / CLAUDE_USAGE_THRESHOLDS at a temp path, or "
+        "Point CODEX_CLAUDE_USAGE_DB / CODEX_CLAUDE_USAGE_THRESHOLDS at a temp path, or "
         "patch the module global -- and check the function you are calling "
         "resolves it at CALL time rather than freezing it into a default. "
         "See tests/test_no_test_touches_the_real_database.py.")

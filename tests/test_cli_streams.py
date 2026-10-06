@@ -249,7 +249,7 @@ class TestALockedOrReadOnlyDatabaseIsNotCalledUnusable(_Streams):
         2026-08-16, exactly one qualifies: `main`'s guard around the report.
         """
         import ast
-        source = (Path(__file__).resolve().parent.parent / "claude_usage" /
+        source = (Path(__file__).resolve().parent.parent / "codex_claude_usage" /
                   "cli.py").read_text(encoding="utf-8")
         tree = ast.parse(source)
         checked = 0
@@ -434,7 +434,7 @@ class _EntryPoint(unittest.TestCase):
     an `if __name__ == "__main__":` block, which no import ever executes, and
     because the exit CODE is half of every contract below.
 
-    **`HOME` and `CLAUDE_USAGE_DB` are redirected as a safety property, not as
+    **`HOME` and `CODEX_CLAUDE_USAGE_DB` are redirected as a safety property, not as
     hygiene.** In several cases below the thing under test is precisely what
     stops the child from scanning; mutate it away and an un-isolated child
     walks the developer's real `~/.claude/projects` and writes their real
@@ -448,7 +448,7 @@ class _EntryPoint(unittest.TestCase):
         """(returncode, stdout, stderr).
 
         `extra_env` is applied last, so a caller can put back the one variable
-        this harness deliberately clears -- `CLAUDE_USAGE_PROJECTS_DIRS`, whose
+        this harness deliberately clears -- `CODEX_CLAUDE_USAGE_PROJECTS_DIRS`, whose
         absence is the whole subject of one test below.
         """
         home = tempfile.mkdtemp()
@@ -457,8 +457,8 @@ class _EntryPoint(unittest.TestCase):
         env = dict(os.environ)
         env["HOME"] = home
         env["USERPROFILE"] = home
-        env["CLAUDE_USAGE_DB"] = str(db or Path(home, ".claude", "usage.db"))
-        env.pop("CLAUDE_USAGE_PROJECTS_DIRS", None)
+        env["CODEX_CLAUDE_USAGE_DB"] = str(db or Path(home, ".claude", "usage.db"))
+        env.pop("CODEX_CLAUDE_USAGE_PROJECTS_DIRS", None)
         # Both ends pinned by construction. `encoding=` alone is half the fix
         # for a child that is itself Python: on a windows-latest runner the
         # child encodes its stdout with the runner's codepage, and decoding
@@ -493,7 +493,7 @@ class _EntryPoint(unittest.TestCase):
 class TestScanAnswersTheSameRefusalsTheReportsDo(_EntryPoint):
     """The command the refusal message NAMES answered it with a traceback.
 
-    `stats` on a mis-pointed `CLAUDE_USAGE_DB` printed three lines ending in
+    `stats` on a mis-pointed `CODEX_CLAUDE_USAGE_DB` printed three lines ending in
     "Move or delete that file, then run: python cli.py scan". Follow that
     literally without moving the file first -- which is what a reader who has
     not yet understood the message does -- and `scan` produced a bare
@@ -558,7 +558,7 @@ class TestAPathTheGuardRefusesIsAMessageNotATraceback(_EntryPoint):
     probe, one line ABOVE the first handler in that function, which is why
     widening the caught tuple alone would not have reached it. Every other
     database problem gets one refusal and an exit; a mis-pointed
-    `CLAUDE_USAGE_DB` is a typo, not a crash.
+    `CODEX_CLAUDE_USAGE_DB` is a typo, not a crash.
 
     The two commands do not print identical words for a directory, and that is
     the guard's doing rather than a second copy of a message: `require_db` asks
@@ -577,7 +577,7 @@ class TestAPathTheGuardRefusesIsAMessageNotATraceback(_EntryPoint):
                 self.assertNotIn("Traceback", err)
                 self.assertIn("Cannot use that usage database path", err)
                 self.assertIn(str(db), err, "the refusal does not name the file")
-                self.assertIn("CLAUDE_USAGE_DB", err,
+                self.assertIn("CODEX_CLAUDE_USAGE_DB", err,
                               "nothing points at what to correct")
                 self.assertTrue(
                     any(said in err for said in guard_said),
@@ -744,7 +744,7 @@ class TestAPathTheGuardRefusesIsAMessageNotATraceback(_EntryPoint):
         carry a disk that filled up. `database_refusal` answers `None` for
         those and the caller re-raises, so nothing is printed and the original
         traceback survives -- delete that `raise` and a full disk is answered
-        with advice about `CLAUDE_USAGE_DB`.
+        with advice about `CODEX_CLAUDE_USAGE_DB`.
         """
         import scanner
         tmp = Path(tempfile.mkdtemp())
@@ -795,7 +795,7 @@ class TestAPathTheGuardRefusesIsAMessageNotATraceback(_EntryPoint):
 class TestTheAdviceNamesACommandThatExists(_Streams):
     """Four of the five delivery surfaces have no usable `cli.py` to run.
 
-    pip, Homebrew and the .vsix put a `claude-usage` console script on PATH and
+    pip, Homebrew and the .vsix put a `codex-claude-usage` console script on PATH and
     ship no file the reader can point `python` at, so every "run: python cli.py
     scan" printed there named a command that does not exist -- in the messages
     that matter most, the ones printed when something has already gone wrong.
@@ -810,8 +810,8 @@ class TestTheAdviceNamesACommandThatExists(_Streams):
             return safetext.invocation()
 
     def test_the_console_script_is_named_when_that_is_how_we_were_run(self):
-        self.assertEqual(self._spelling("/usr/local/bin/claude-usage"),
-                         "claude-usage")
+        self.assertEqual(self._spelling("/usr/local/bin/codex-claude-usage"),
+                         "codex-claude-usage")
 
     def test_the_homebrew_shim_is_believed_over_argv(self):
         """Homebrew is the surface `argv[0]` cannot answer for.
@@ -823,38 +823,38 @@ class TestTheAdviceNamesACommandThatExists(_Streams):
         sits inside libexec and cannot be run at all, which is one of the three
         surfaces this whole helper exists for.
 
-        The shim exports `CLAUDE_USAGE_INVOKED_AS` because only it knows the
+        The shim exports `CODEX_CLAUDE_USAGE_INVOKED_AS` because only it knows the
         name on PATH; `tests/test_brew_shim_env.py` holds it in UNCONDITIONAL.
         """
         import safetext
         env = dict(os.environ)
-        env["CLAUDE_USAGE_INVOKED_AS"] = "claude-usage"
+        env["CODEX_CLAUDE_USAGE_INVOKED_AS"] = "codex-claude-usage"
         with mock.patch.dict(os.environ, env, clear=True), \
                 mock.patch.object(
                     sys, "argv",
-                    ["/opt/homebrew/opt/claude-usage/libexec/cli.py", "url"]):
-            self.assertEqual(safetext.invocation(), "claude-usage")
+                    ["/opt/homebrew/opt/codex-claude-usage/libexec/cli.py", "url"]):
+            self.assertEqual(safetext.invocation(), "codex-claude-usage")
 
     def test_the_docker_spelling_targets_its_mounted_database(self):
         import safetext
         env = dict(os.environ)
         env.update({
-            "CLAUDE_USAGE_INVOKED_AS": "docker",
-            "CLAUDE_USAGE_DOCKER_CONTAINER": "usage-app_1",
+            "CODEX_CLAUDE_USAGE_INVOKED_AS": "docker",
+            "CODEX_CLAUDE_USAGE_DOCKER_CONTAINER": "usage-app_1",
         })
         with mock.patch.dict(os.environ, env, clear=True), \
                 mock.patch.object(sys, "argv", ["cli.py", "url"]):
             self.assertEqual(
                 safetext.invocation(),
-                "docker exec usage-app_1 python3 -m claude_usage.cli",
+                "docker exec usage-app_1 python3 -m codex_claude_usage.cli",
             )
 
     def test_an_unsafe_docker_container_name_is_never_rendered_as_a_command(self):
         import safetext
         env = dict(os.environ)
         env.update({
-            "CLAUDE_USAGE_INVOKED_AS": "docker",
-            "CLAUDE_USAGE_DOCKER_CONTAINER": "usage; touch /tmp/owned",
+            "CODEX_CLAUDE_USAGE_INVOKED_AS": "docker",
+            "CODEX_CLAUDE_USAGE_DOCKER_CONTAINER": "usage; touch /tmp/owned",
         })
         with mock.patch.dict(os.environ, env, clear=True), \
                 mock.patch.object(sys, "argv", ["cli.py", "url"]):
@@ -867,15 +867,15 @@ class TestTheAdviceNamesACommandThatExists(_Streams):
         for declared in (None, "", "   ", "rm -rf /", "python cli.py"):
             with self.subTest(declared=declared):
                 env = {k: v for k, v in os.environ.items()
-                       if k != "CLAUDE_USAGE_INVOKED_AS"}
+                       if k != "CODEX_CLAUDE_USAGE_INVOKED_AS"}
                 if declared is not None:
-                    env["CLAUDE_USAGE_INVOKED_AS"] = declared
+                    env["CODEX_CLAUDE_USAGE_INVOKED_AS"] = declared
                 with mock.patch.dict(os.environ, env, clear=True), \
                         mock.patch.object(sys, "argv", ["cli.py", "url"]):
                     self.assertEqual(safetext.invocation(), "python cli.py")
 
     def test_the_checkout_spelling_survives_everywhere_else(self):
-        for argv0 in ("cli.py", "/src/claude-usage/cli.py",
+        for argv0 in ("cli.py", "/src/codex-claude-usage/cli.py",
                       "/usr/lib/python3.13/unittest/__main__.py"):
             with self.subTest(argv0=argv0):
                 self.assertEqual(self._spelling(argv0), "python cli.py")
@@ -885,20 +885,20 @@ class TestTheAdviceNamesACommandThatExists(_Streams):
         actually uses it. Drive a real refusal both ways."""
         import dashboard
         with mock.patch.object(dashboard, "read_url_file", return_value=None):
-            with mock.patch.object(sys, "argv", ["/usr/bin/claude-usage", "url"]):
+            with mock.patch.object(sys, "argv", ["/usr/bin/codex-claude-usage", "url"]):
                 _, _, script = self.run_command(cli.cmd_url)
             with mock.patch.object(sys, "argv", ["cli.py", "url"]):
                 _, _, checkout = self.run_command(cli.cmd_url)
-        self.assertIn("claude-usage dashboard", script)
+        self.assertIn("codex-claude-usage dashboard", script)
         self.assertNotIn("python cli.py", script)
         self.assertIn("python cli.py dashboard", checkout)
 
     def test_the_help_text_follows_it_too(self):
         self.assertIn("python cli.py scan", cli.USAGE,
                       "USAGE is the template and keeps the checkout spelling")
-        with mock.patch.object(sys, "argv", ["/usr/bin/claude-usage"]):
+        with mock.patch.object(sys, "argv", ["/usr/bin/codex-claude-usage"]):
             rendered = cli.usage_text()
-        self.assertIn("claude-usage scan", rendered)
+        self.assertIn("codex-claude-usage scan", rendered)
         self.assertNotIn("python cli.py", rendered)
 
 
@@ -1114,7 +1114,7 @@ class TestTheBackgroundScanExplainsItselfOnStderr(_Streams):
         A lock clears; the database behind the page is intact and readable the
         moment the other process lets go. The other two do not, and the line
         was printed for all three until 2026-08-16. Measured that day against a
-        foreign `CLAUDE_USAGE_DB`, through a real server on a real socket with
+        foreign `CODEX_CLAUDE_USAGE_DB`, through a real server on a real socket with
         a real token: `GET /api/data` and `GET /api/sources` both answered
         `500 {"error": "Failed to read the usage database"}`, again on the next
         request, while `/` and `/healthz` answered 200 — the page loads and can
@@ -1203,7 +1203,7 @@ class TestTheBackgroundScanExplainsItselfOnStderr(_Streams):
 
         It has no `cmd_scan` in front of it -- it calls `scanner.scan` directly
         -- so it carried its own copy of the `terminal_safe` fold, and a
-        `CLAUDE_USAGE_DB` pointed at somebody else's SQLite file is exactly what
+        `CODEX_CLAUDE_USAGE_DB` pointed at somebody else's SQLite file is exactly what
         this thread finds out about. Its stream stays stdout: unlike `cli.py
         dashboard`, this entry point prints no URL for a reader to copy, and
         `test_a_failing_scan_does_not_take_the_server_down_silently` in
@@ -1323,7 +1323,7 @@ class TestTheMissingDatabaseRefusalNamesTheFile(_Streams):
     """The one refusal in `require_db` that did not say which file it meant.
 
     "Database not found. Run: python cli.py scan" is credible for a machine
-    that has never scanned and misleading for a typo'd `CLAUDE_USAGE_DB` -- and
+    that has never scanned and misleading for a typo'd `CODEX_CLAUDE_USAGE_DB` -- and
     following its instruction literally then CREATES a second database at the
     typo'd path, leaving the real history untouched and unreachable with
     nothing on either stream naming either file. Every sibling refusal in the
@@ -1347,7 +1347,7 @@ class TestTheMissingRootWarningIsADiagnostic(_EntryPoint):
 
     `cli.scan_roots_for` was added with its copy of the missing-root line
     already on stderr and `scanner._scan_unlocked`'s two were left where they
-    were, so ONE `cli.py scan` reported an absent `CLAUDE_USAGE_PROJECTS_DIRS`
+    were, so ONE `cli.py scan` reported an absent `CODEX_CLAUDE_USAGE_PROJECTS_DIRS`
     root on both streams at once -- `scan_roots_for` hands on only the roots
     that exist, but `scanner.resolve_scan_roots` re-reads the environment for
     itself. The same stdout copy landed in `cli.py dashboard`'s stdout, beside
@@ -1371,7 +1371,7 @@ class TestTheMissingRootWarningIsADiagnostic(_EntryPoint):
         root = str(Path("/nope/env-root"))
         code, out, err = self.entry_point(
             "cli.py", "scan",
-            extra_env={"CLAUDE_USAGE_PROJECTS_DIRS": root})
+            extra_env={"CODEX_CLAUDE_USAGE_PROJECTS_DIRS": root})
         self.assertIn(code, (None, 0), f"the scan itself failed: {err!r}")
         self.assertIn(root, err)
         self.assertNotIn("Warning:", out,

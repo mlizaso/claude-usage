@@ -18,8 +18,12 @@ must be the topmost one.
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
+import textwrap
+import zipfile
 import unittest
 from pathlib import Path
 
@@ -285,6 +289,118 @@ class TestChangelogReleasability(unittest.TestCase):
                 "guard treats as released, so a stale copy stops enforcing the "
                 "rule the workflow actually applies.",
             )
+
+
+@unittest.skipIf(os.name == "nt", "release payload preparation runs on Ubuntu")
+@unittest.skipUnless(shutil.which("bash"), "release payload preparation requires bash")
+class TestReleasePayloadAcrossTheRename(unittest.TestCase):
+    def test_runtime_changes_before_and_after_the_rename_require_matching_ci(self):
+        workflow = WORKFLOW.read_text(encoding="utf-8")
+        match = re.search(
+            r'relevant=\$\((git log -1 --format=%H "\$SHA" -- \\\n'
+            r'.*?\.github/workflows/extension-ci\.yml)\)', workflow, re.DOTALL)
+        self.assertIsNotNone(match, "release CI applicability command is missing")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            def git(*args):
+                result = subprocess.run(
+                    ["git", "-C", str(root), "-c", "core.hooksPath=/dev/null",
+                     "-c", "user.name=Synthetic", "-c", "user.email=synthetic@example.invalid",
+                     "-c", "commit.gpgsign=false", *args],
+                    capture_output=True, text=True, encoding="utf-8", check=True,
+                )
+                return result.stdout.strip()
+
+            git("init", "--quiet")
+            (root / "vscode-extension").mkdir()
+            (root / "vscode-extension" / "package.json").write_text("{}\n", encoding="utf-8")
+            git("add", ".")
+            git("commit", "--quiet", "-m", "synthetic extension baseline")
+            for package in ("claude_usage", "codex_claude_usage"):
+                with self.subTest(package=package):
+                    (root / package).mkdir()
+                    (root / package / "runtime.py").write_text("# synthetic runtime change\n",
+                                                                encoding="utf-8")
+                    git("add", ".")
+                    git("commit", "--quiet", "-m", "synthetic runtime change")
+                    runtime_sha = git("rev-parse", "HEAD")
+                    (root / "CHANGELOG.md").write_text(package + "\n", encoding="utf-8")
+                    git("add", ".")
+                    git("commit", "--quiet", "-m", "synthetic changelog-only release")
+                    result = subprocess.run(
+                        ["bash", "-c", match.group(1)], cwd=root,
+                        capture_output=True, text=True, encoding="utf-8",
+                        env=dict(os.environ, SHA=git("rev-parse", "HEAD")),
+                    )
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertEqual(result.stdout.strip(), runtime_sha)
+
+    def test_historical_and_current_packages_reach_the_publish_job(self):
+        workflow = WORKFLOW.read_text(encoding="utf-8")
+        prepare = workflow.split("      - name: Prepare release notes\n", 1)[1]
+        prepare = prepare.split("\n      - name:", 1)[0]
+        script = textwrap.dedent(prepare.split("        run: |\n", 1)[1])
+        self.assertIn("vsix_filename: ${{ steps.build.outputs.vsix_filename }}", workflow)
+        self.assertIn('echo "vsix_filename=$vsix" >> "$GITHUB_OUTPUT"', workflow)
+        publish = workflow.split("  release:\n", 1)[1]
+        self.assertIn("VSIX_FILENAME: ${{ needs.prepare.outputs.vsix_filename }}", publish)
+        self.assertIn('vsix="release-output/$VSIX_FILENAME"', publish)
+        for package, version in (("claude-usage", "1.7.0"),
+                                 ("codex-claude-usage", "1.8.0")):
+            with self.subTest(package=package), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                source = root / f"{package}-{version}.vsix"
+                identity = {"name": package, "publisher": "synthetic", "version": version}
+                with zipfile.ZipFile(source, "w") as archive:
+                    archive.writestr("extension/package.json", json.dumps(identity))
+                (root / "docs").mkdir()
+                notes = f"## v{version} — 2026-10-06\n\n- Synthetic release.\n"
+                (root / "docs" / "CHANGELOG.md").write_text(notes, encoding="utf-8")
+                result = subprocess.run(
+                    ["bash", "-c", script], cwd=root, capture_output=True,
+                    text=True, encoding="utf-8",
+                    env=dict(os.environ, VERSION=f"v{version}", VSIX=str(source)),
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                output = root / "release-output"
+                filename = f"{package}-{version}.vsix"
+                self.assertEqual({path.name for path in output.iterdir()},
+                                 {filename, "notes.md"})
+                self.assertEqual((output / filename).read_bytes(), source.read_bytes())
+                with zipfile.ZipFile(output / filename) as archive:
+                    self.assertEqual(json.loads(archive.read("extension/package.json")), identity)
+                self.assertEqual((output / "notes.md").read_text(encoding="utf-8"), notes)
+
+    def test_publish_accepts_only_reviewed_identity_and_version_filenames(self):
+        workflow = WORKFLOW.read_text(encoding="utf-8")
+        publish = workflow.split("      - name: Create matching tag and GitHub release\n", 1)[1]
+        script = publish.split("        run: |\n", 1)[1]
+        script = textwrap.dedent(script.split("          # Only read the SHA", 1)[0])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "release-output"
+            output.mkdir()
+            (output / "notes.md").write_text("Synthetic release notes\n", encoding="utf-8")
+            valid = [f"{package}-1.7.0.vsix" for package in
+                     ("claude-usage", "claude-usage-private", "codex-claude-usage")]
+            for filename in valid:
+                (output / filename).write_bytes(b"synthetic reviewed artifact")
+            cases = [(filename, "v1.7.0", True) for filename in valid]
+            cases += [(filename, "v1.7.0", False) for filename in
+                      ("../claude-usage-1.7.0.vsix", "/tmp/claude-usage-1.7.0.vsix",
+                       "codex-claude-usage-1.8.0.vsix", "unrelated-1.7.0.vsix",
+                       "claude-usage-1.7.0.vsix\nextra", "")]
+            cases.append((valid[0], "v1.7.0/../../escape", False))
+            for filename, version, succeeds in cases:
+                with self.subTest(filename=filename, version=version):
+                    result = subprocess.run(
+                        ["bash", "-c", script], cwd=root, capture_output=True,
+                        text=True, encoding="utf-8",
+                        env=dict(os.environ, VERSION=version, VSIX_FILENAME=filename),
+                    )
+                    self.assertEqual(result.returncode == 0, succeeds,
+                                     result.stdout + result.stderr)
 
 
 class TestBundlingRationale(unittest.TestCase):

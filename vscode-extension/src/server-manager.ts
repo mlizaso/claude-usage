@@ -135,17 +135,17 @@ export class ServerManager {
     try {
       const env = sanitizedChildEnvironment();
       if (this.opts.apiToken) {
-        env.CLAUDE_USAGE_API_TOKEN = this.opts.apiToken;
+        env.CODEX_CLAUDE_USAGE_API_TOKEN = this.opts.apiToken;
         // The authenticated fragment is supplied directly to the iframe. Do
         // not duplicate the bearer token in the extension output channel.
-        env.CLAUDE_USAGE_SUPPRESS_AUTH_URL = "1";
+        env.CODEX_CLAUDE_USAGE_SUPPRESS_AUTH_URL = "1";
       }
       if (this.opts.healthToken) {
         // The raw secret never crosses HTTP. It keeps extension-owned health
         // responses opaque to unauthenticated port diagnostics; the probe
         // sends a nonce and verifies the HMAC response. The same secret may
         // derive a consumed, one-shot rescan proof, never the browser bearer.
-        env.CLAUDE_USAGE_HEALTH_TOKEN = this.opts.healthToken;
+        env.CODEX_CLAUDE_USAGE_HEALTH_TOKEN = this.opts.healthToken;
       }
       proc = this.spawnFn(this.opts.command, this.opts.args, {
         env,
@@ -398,7 +398,7 @@ const CHILD_ENV_ALLOWLIST = new Set([
   "LC_ALL",
   "LC_CTYPE",
   "TZ",
-  "CLAUDE_USAGE_DOCKER",
+  "CODEX_CLAUDE_USAGE_DOCKER",
 ]);
 
 /**
@@ -406,7 +406,7 @@ const CHILD_ENV_ALLOWLIST = new Set([
  * user's home directory, temporary directory, locale, timezone, and Windows
  * runtime, plus the Docker collection opt-out (a boolean, never a command).
  * In particular, API keys, cloud credentials, PYTHON* hooks, PATH, and the
- * CLI-only CLAUDE_USAGE_DB override never cross this process boundary.
+ * CLI-only CODEX_CLAUDE_USAGE_DB override never cross this process boundary.
  */
 export function sanitizedChildEnvironment(
   source: NodeJS.ProcessEnv = process.env,
@@ -511,7 +511,7 @@ function defaultProbe(url: string, healthToken?: string): Promise<boolean> {
         parsed.searchParams.set("challenge", challenge);
         requestUrl = parsed.toString();
         expectedInstance = createHmac("sha256", healthToken)
-          .update(`claude-usage-health\0${challenge}`, "ascii")
+          .update(`codex-claude-usage-health\0${challenge}`, "ascii")
           .digest("hex");
       } catch {
         finish(false);
@@ -546,7 +546,7 @@ function defaultProbe(url: string, healthToken?: string): Promise<boolean> {
           const ok =
             typeof body === "object" &&
             body !== null &&
-            body.service === "claude-usage" &&
+            body.service === "codex-claude-usage" &&
             body.status === "ok" &&
             (!expectedInstance || body.instance === expectedInstance);
           finish(ok);
@@ -609,10 +609,10 @@ function defaultRescan(url: string, _apiToken: string, timeoutMs: number,
     // expired; a captured pair never becomes valid again when that entry goes.
     const challenge = `${randomBytes(24).toString("base64url")}_${Date.now()}`;
     const proof = createHmac("sha256", healthToken)
-      .update(`claude-usage-rescan\0POST /api/rescan\0${challenge}`, "ascii")
+      .update(`codex-claude-usage-rescan\0POST /api/rescan\0${challenge}`, "ascii")
       .digest("hex");
-    headers["X-Claude-Usage-Rescan-Challenge"] = challenge;
-    headers["X-Claude-Usage-Rescan-Proof"] = proof;
+    headers["X-Codex-Claude-Usage-Rescan-Challenge"] = challenge;
+    headers["X-Codex-Claude-Usage-Rescan-Proof"] = proof;
     const req = http.request(url, {
       method: "POST",
       headers,

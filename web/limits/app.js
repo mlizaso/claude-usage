@@ -1,6 +1,6 @@
 "use strict";
 
-const TOKEN_HEADER = "X-Claude-Usage-Token";
+const TOKEN_HEADER = "X-Codex-Claude-Usage-Token";
 const POLL_MS = 30000;
 const state = { token: "", payload: null, receivedAt: 0, refreshSerial: 0,
   previous: new Map(), saves: new Map() };

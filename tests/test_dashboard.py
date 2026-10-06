@@ -493,7 +493,7 @@ class TestDashboardHTTP(unittest.TestCase):
         write_expired_window_config(cls.config_path, cls.window_reset)
         cls.expected_recorded = seed_window_turns(tmp / "usage.db", cls.window_reset)
         cls._env = mock.patch.dict(os.environ, {
-            "CLAUDE_USAGE_CONFIG": str(cls.config_path),
+            "CODEX_CLAUDE_USAGE_CONFIG": str(cls.config_path),
             # Neutralise the developer's own ~/.claude/settings.json: an
             # api-key declaration there resolves to available:false and would
             # vacuum these assertions on their machine but not on CI. Empty
@@ -573,7 +573,7 @@ class TestDashboardHTTP(unittest.TestCase):
             self.assertEqual(resp.status, 200)
             body_bytes = resp.read()
         body = json.loads(body_bytes)
-        self.assertEqual(body["service"], "claude-usage")
+        self.assertEqual(body["service"], "codex-claude-usage")
         self.assertEqual(body["proof"], dashboard._liveness_proof(challenge))
         self.assertNotIn(API_TOKEN.encode("ascii"), body_bytes)
         self.assertNotIn(dashboard.LIVENESS_TOKEN.encode("ascii"), body_bytes)
@@ -778,7 +778,7 @@ class TestDashboardHTTP(unittest.TestCase):
         can expose a mixture of provisional and final rows even though the
         status is idle again by the time the response is sent.
         """
-        import claude_usage.dashboard_data as dashboard_data
+        import codex_claude_usage.dashboard_data as dashboard_data
 
         def crossed_generation(value):
             def build(*_args, **_kwargs):
@@ -935,7 +935,7 @@ class TestDashboardHTTP(unittest.TestCase):
         url = f"http://127.0.0.1:{self.port}/healthz"
         with urllib.request.urlopen(url) as resp:
             data = json.loads(resp.read())
-        self.assertEqual(data["service"], "claude-usage")
+        self.assertEqual(data["service"], "codex-claude-usage")
         self.assertEqual(data["status"], "ok")
         self.assertEqual(set(data), {"service", "status", "version"})
 
@@ -1099,13 +1099,13 @@ class TestDashboardHTTP(unittest.TestCase):
 
     def test_console_script_pages_name_the_installed_command(self):
         import dashboard
-        with mock.patch.object(sys, "argv", ["/usr/local/bin/claude-usage"]), \
+        with mock.patch.object(sys, "argv", ["/usr/local/bin/codex-claude-usage"]), \
                 mock.patch.dict(os.environ,
-                                {"CLAUDE_USAGE_INVOKED_AS": ""}):
+                                {"CODEX_CLAUDE_USAGE_INVOKED_AS": ""}):
             commands = dashboard._commands_for_page("web")
-        self.assertEqual(commands["scan"], "claude-usage scan")
-        self.assertEqual(commands["diagnose"], "claude-usage stats")
-        self.assertEqual(commands["reconnect"], "claude-usage url --open")
+        self.assertEqual(commands["scan"], "codex-claude-usage scan")
+        self.assertEqual(commands["diagnose"], "codex-claude-usage stats")
+        self.assertEqual(commands["reconnect"], "codex-claude-usage url --open")
 
 
 class TestHTMLTemplate(unittest.TestCase):
@@ -1229,7 +1229,7 @@ class TestDashboardSecurityHelpers(unittest.TestCase):
     def test_fresh_process_honors_trusted_api_token_environment(self):
         token = "b" * 43
         env = os.environ.copy()
-        env["CLAUDE_USAGE_API_TOKEN"] = token
+        env["CODEX_CLAUDE_USAGE_API_TOKEN"] = token
         # Pin BOTH ends of the pipe. `encoding=` alone fixes only the parent:
         # a Python child left to `locale.getencoding()` encodes its stdout as
         # cp1252 on windows-latest, and decoding that as UTF-8 here is a NEW
@@ -1290,7 +1290,7 @@ class TestDashboardSecurityHelpers(unittest.TestCase):
             self.assertEqual(validate_bind_host(host), host)
         self.assertEqual(validate_bind_host("localhost"), "127.0.0.1")
         self.assertEqual(validate_bind_host("LOCALHOST."), "127.0.0.1")
-        with mock.patch.dict(os.environ, {"CLAUDE_USAGE_ALLOW_CONTAINER_BIND": ""}):
+        with mock.patch.dict(os.environ, {"CODEX_CLAUDE_USAGE_ALLOW_CONTAINER_BIND": ""}):
             with self.assertRaises(ValueError):
                 validate_bind_host("0.0.0.0")
             with self.assertRaises(ValueError):
@@ -1399,7 +1399,7 @@ class TestDashboardSecurityHelpers(unittest.TestCase):
 
     def test_container_wildcard_bind_requires_explicit_opt_in(self):
         import dashboard
-        with mock.patch.dict(os.environ, {"CLAUDE_USAGE_ALLOW_CONTAINER_BIND": "1"}):
+        with mock.patch.dict(os.environ, {"CODEX_CLAUDE_USAGE_ALLOW_CONTAINER_BIND": "1"}):
             with mock.patch.object(dashboard, "_running_in_docker", return_value=True):
                 self.assertEqual(validate_bind_host("0.0.0.0"), "0.0.0.0")
             with mock.patch.object(dashboard, "_running_in_docker", return_value=False):
@@ -1815,7 +1815,7 @@ class TestUrlFileRecovery(unittest.TestCase):
         script = "\n".join((
             "import sys, time",
             "from pathlib import Path",
-            "from claude_usage import dashboard",
+            "from codex_claude_usage import dashboard",
             "target, ready, release = map(Path, sys.argv[1:])",
             "with dashboard._url_file_lock(target) as locked:",
             "    if not locked:",
@@ -2169,7 +2169,7 @@ class TestUrlFileRecovery(unittest.TestCase):
     @unittest.skipUnless(os.name == "posix", "FIFO semantics are POSIX")
     def test_a_replacement_fifo_between_validation_and_read_cannot_block(self):
         """The safety decision must describe the descriptor actually read."""
-        import claude_usage.safefile as safefile
+        import codex_claude_usage.safefile as safefile
         import dashboard
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -2367,7 +2367,7 @@ class TestTheConfigDirectoryOverrideMovesBothHalves(unittest.TestCase):
         })
         self._env.start()
         for name in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN",
-                     "CLAUDE_USAGE_CONFIG"):
+                     "CODEX_CLAUDE_USAGE_CONFIG"):
             os.environ.pop(name, None)
 
     def tearDown(self):
@@ -2576,7 +2576,7 @@ class TestCliRejectsArgumentsItWouldDrop(unittest.TestCase):
         `Path("")` is `Path(".")` and `resolve_scan_roots` accepts it, so a
         wrapper building `--projects-dir "$MOUNT"` with `MOUNT` unset made the
         whole working directory a scan root and reported it as a normal scan at
-        exit 0. `CLAUDE_USAGE_PROJECTS_DIRS`, documented as the same surface,
+        exit 0. `CODEX_CLAUDE_USAGE_PROJECTS_DIRS`, documented as the same surface,
         has always dropped blanks.
 
         `["today", "--source", ""]` is deliberately absent: `validate_source`
@@ -3609,7 +3609,7 @@ class TestADashboardTriggeredRebuildNamesTheFileItThrewAway(unittest.TestCase):
     `init_db` announces a rebuild on stderr and `_announce_rebuild` prints the
     `  file: …` line only when it was given a path, so `init_db(conn)` would
     still rebuild and still announce — just without saying which database. That
-    matters because there is rarely only one: `CLAUDE_USAGE_DB`, a Docker bind
+    matters because there is rarely only one: `CODEX_CLAUDE_USAGE_DB`, a Docker bind
     mount and the VS Code extension's own server can all be live on one machine.
 
     Both call sites are covered separately on purpose. Reverting either one to

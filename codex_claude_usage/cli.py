@@ -23,7 +23,7 @@ from .scanner import VERSION, invocation, terminal_safe
 from .pricing import PRICING, calc_cost, fmt, fmt_cost, get_pricing
 from .reports import hr, resolve_source, _cmd_stats, _cmd_today, _cmd_week
 
-DB_PATH = Path(os.environ.get("CLAUDE_USAGE_DB", Path.home() / ".claude" / "usage.db"))
+DB_PATH = Path(os.environ.get("CODEX_CLAUDE_USAGE_DB", Path.home() / ".claude" / "usage.db"))
 
 # Which assistant the reports cover. `all` is the only way to get a blended
 # figure, and it says so in its own output — see reports.BLEND_NOTE.
@@ -121,7 +121,7 @@ def _locked_database_message(exc, action):
     return (f"Could not {action} the usage database right now: "
             f"{terminal_safe(str(DB_PATH))}\n"
             f"  SQLite said: {terminal_safe(str(exc))}\n"
-            f"  The file itself looks fine. Another claude-usage process may "
+            f"  The file itself looks fine. Another codex-claude-usage process may "
             f"be scanning or rebuilding it, or it may be on a read-only mount.\n"
             f"  Try again in a moment.")
 
@@ -181,7 +181,7 @@ def database_refusal(exc):
         # The PATH, not the contents -- and until 2026-08-16 all four of these
         # came out as a raw traceback from `today`/`week`/`stats` and from
         # `scan`, which is the one class of database problem this contract was
-        # written for: a mis-pointed `CLAUDE_USAGE_DB` is a typo, not a crash.
+        # written for: a mis-pointed `CODEX_CLAUDE_USAGE_DB` is a typo, not a crash.
         # Reproduced for each of the four on a copy of the tree as it stood.
         #
         # The guard's own sentence is quoted rather than re-worded, so there is
@@ -189,7 +189,7 @@ def database_refusal(exc):
         return (f"Cannot use that usage database path: "
                 f"{terminal_safe(str(DB_PATH))}\n"
                 f"  {terminal_safe(str(exc))}\n"
-                f"  Point CLAUDE_USAGE_DB at a regular file you own, or repair "
+                f"  Point CODEX_CLAUDE_USAGE_DB at a regular file you own, or repair "
                 f"that path.")
     return None
 
@@ -326,7 +326,7 @@ def require_db():
         if not _refused(exc):
             raise
     if conn is None:
-        # Naming the file is what tells a typo'd `CLAUDE_USAGE_DB` apart from a
+        # Naming the file is what tells a typo'd `CODEX_CLAUDE_USAGE_DB` apart from a
         # machine that has never scanned. Every sibling refusal here names it;
         # this one did not, and the instruction it gives -- `cli.py scan` --
         # then CREATES a second database at the typo'd path, leaving the real
@@ -351,7 +351,7 @@ def require_db():
         # column". **This call can DESTROY the database** -- see the docstring.
         # A file that is not ours at all is refused rather than rebuilt, and the
         # refusal is a message and an exit rather than a traceback -- it is a
-        # mis-pointed `CLAUDE_USAGE_DB`, which is a typo, not a crash.
+        # mis-pointed `CODEX_CLAUDE_USAGE_DB`, which is a typo, not a crash.
         #
         # Three conditions and three different messages, but ONE definition of
         # which is which: `database_refusal`, which `cmd_scan` and
@@ -413,7 +413,7 @@ def cmd_scan(projects_dirs=None, verbose=True):
     # then run: python cli.py scan" was followed literally, without moving the
     # file, and answered with a bare `sqlite3.DatabaseError` traceback.
     # A foreign file did the same through `db.ForeignDatabaseError`. Both are a
-    # mis-pointed `CLAUDE_USAGE_DB` — a typo, not a crash — and a typo that
+    # mis-pointed `CODEX_CLAUDE_USAGE_DB` — a typo, not a crash — and a typo that
     # tracebacks from one command and prints one line from another teaches the
     # reader that the two disagree about the file.
     try:
@@ -549,7 +549,7 @@ def cmd_dashboard(projects_dirs=None, host=None, port=None, no_browser=False, su
             # reassurance below is true of exactly one of them. Until
             # 2026-08-16 one line was printed for all three, and it said the
             # dashboard was "still serving whatever the database already held".
-            # Measured that day against a foreign `CLAUDE_USAGE_DB`, through a
+            # Measured that day against a foreign `CODEX_CLAUDE_USAGE_DB`, through a
             # real server and a real authenticated client: `GET /api/data` and
             # `GET /api/sources` both answered `500 {"error": "Failed to read
             # the usage database"}`, and answered it again on the next request,
@@ -617,7 +617,7 @@ Usage:
                                              Scan JSONL files and update database.
                                              --projects-dir may be repeated and is scanned
                                              IN ADDITION to the default locations; set
-                                             CLAUDE_USAGE_PROJECTS_DIRS for the same effect.
+                                             CODEX_CLAUDE_USAGE_PROJECTS_DIRS for the same effect.
   python cli.py today [--source SOURCE]      Show today's usage summary
   python cli.py week  [--source SOURCE]      Show last 7 days (per-day + by-model)
   python cli.py stats [--source SOURCE]      Show all-time statistics
@@ -642,7 +642,7 @@ def usage_text():
 
     The template says `python cli.py`, which is the checkout's and the Docker
     image's spelling and exists nowhere a pip, Homebrew or .vsix user can reach
-    -- there the tool is `claude-usage` and the help text named a command that
+    -- there the tool is `codex-claude-usage` and the help text named a command that
     does not exist. Substituted at call time rather than baked into the constant
     because `invocation()` reads `sys.argv[0]`, which is not known at import.
 
@@ -777,7 +777,7 @@ def validate_flags(command, args):
                 # `resolve_scan_roots` accepts it, so `--projects-dir ""` — a
                 # wrapper passing an unset variable — made the whole working
                 # directory a scan root and reported a normal scan at exit 0.
-                # `CLAUDE_USAGE_PROJECTS_DIRS` has always dropped blanks.
+                # `CODEX_CLAUDE_USAGE_PROJECTS_DIRS` has always dropped blanks.
                 # Emptiness, not blankness: `Path(" ")` is a directory someone
                 # may legitimately have, and one that does not exist already
                 # gets the "not found, skipping" warning.
@@ -818,10 +818,10 @@ def scan_roots_for(rest):
 
     Called from the two branches that walk a directory, because it was called
     for all six: `url`, `today`, `week` and `stats` never read a transcript, and
-    an absent `CLAUDE_USAGE_PROJECTS_DIRS` root (an unmounted drive is the
+    an absent `CODEX_CLAUDE_USAGE_PROJECTS_DIRS` root (an unmounted drive is the
     ordinary reason) still printed its warning at the top of their output. On
     stdout, which is the half that broke a caller rather than merely puzzling
-    one — `url`'s stdout is a single URL, and `open "$(claude-usage url)"` got
+    one — `url`'s stdout is a single URL, and `open "$(codex-claude-usage url)"` got
     the warning, a newline, then the link. The warning goes to stderr for the
     same reason `require_db`'s empty-database notice does: a diagnostic is not
     report output.
@@ -836,7 +836,7 @@ def scan_roots_for(rest):
 
 
 def main():
-    """Console entry point (``claude-usage``) and ``python cli.py`` dispatch."""
+    """Console entry point (``codex-claude-usage``) and ``python cli.py`` dispatch."""
     if len(sys.argv) >= 2 and sys.argv[1] in ("--version", "-V", "version"):
         print(VERSION)
         sys.exit(0)
@@ -887,7 +887,7 @@ def main():
         print(terminal_safe(exc), file=sys.stderr)
         sys.exit(1)
 
-    # User-supplied rates (CLAUDE_USAGE_RATES), before any command runs. Without
+    # User-supplied rates (CODEX_CLAUDE_USAGE_RATES), before any command runs. Without
     # this the documented override changed nothing on the terminal reports at
     # all: the only other caller is dashboard.py, which `today` / `week` /
     # `stats` never import. Loaded here rather than at module import so `import

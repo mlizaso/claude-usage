@@ -285,7 +285,7 @@ class TestTheReadmeStatesTheRuleGetPricingImplements(unittest.TestCase):
     def test_the_substring_tier_is_documented_as_reaching_local_ids(self):
         """A local model ID containing a recognized family keyword can inherit that
 family rate. Document the override mechanism for correcting it."""
-        self.assertIn("CLAUDE_USAGE_RATES", self.rule,
+        self.assertIn("CODEX_CLAUDE_USAGE_RATES", self.rule,
                       "the section documents no way to correct a model the "
                       "substring tier prices wrongly")
 

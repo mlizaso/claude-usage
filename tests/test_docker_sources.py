@@ -16,7 +16,7 @@ import unittest
 from pathlib import Path, PurePosixPath
 from unittest import mock
 
-from claude_usage import docker_sources as docker, scanner
+from codex_claude_usage import docker_sources as docker, scanner
 from tests.test_dashboard_js import requires_node, run_js
 
 
@@ -58,8 +58,8 @@ class DockerFixture(unittest.TestCase):
         self.archives = {"/etc/passwd": archive_bytes({
             "passwd": b"root:x:0:0::/root:/bin/sh\ndev:x:1000:1000::/home/dev:/bin/sh\n"})}
         self.commands = []
-        self.enterContext(mock.patch.dict(os.environ, {"CLAUDE_USAGE_DOCKER": "1",
-                                                       "CLAUDE_USAGE_PROJECTS_DIRS": ""}))
+        self.enterContext(mock.patch.dict(os.environ, {"CODEX_CLAUDE_USAGE_DOCKER": "1",
+                                                       "CODEX_CLAUDE_USAGE_PROJECTS_DIRS": ""}))
         self.enterContext(mock.patch.object(docker, "_docker_cli", return_value="docker"))
         self.enterContext(mock.patch.object(docker, "_read", side_effect=self.read))
         self.enterContext(mock.patch.object(docker, "_command", side_effect=self.command))
@@ -378,7 +378,7 @@ class TestAutomaticImports(DockerFixture):
         self.assertEqual(docker.status()["state"], "partial")
 
     def test_opt_out_never_invokes_docker(self):
-        with mock.patch.dict(os.environ, {"CLAUDE_USAGE_DOCKER": "0"}):
+        with mock.patch.dict(os.environ, {"CODEX_CLAUDE_USAGE_DOCKER": "0"}):
             self.assertEqual(docker.collect(self.db), [])
         self.assertEqual(self.commands, [])
         self.assertEqual(docker.status()["state"], "disabled")
@@ -424,7 +424,7 @@ class TestDockerCacheConcurrency(DockerFixture):
         import contextlib, errno, os, sys, time
         from pathlib import Path, PurePosixPath
         import tests
-        from claude_usage import docker_sources as docker
+        from codex_claude_usage import docker_sources as docker
 
         cache, archive, control, role, seconds = sys.argv[1:]
         control = Path(control)
@@ -712,7 +712,7 @@ class TestDockerWorkerShutdown(unittest.TestCase):
             import threading
             from unittest import mock
             from tests.test_docker_sources import DockerFixture
-            from claude_usage import dashboard, docker_sources as docker
+            from codex_claude_usage import dashboard, docker_sources as docker
 
             fixture = DockerFixture()
             fixture.setUp()

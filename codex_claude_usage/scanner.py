@@ -64,7 +64,7 @@ DEFAULT_PROJECTS_DIRS = [PROJECTS_DIR, XCODE_PROJECTS_DIR, CODEX_SESSIONS_DIR]
 # extra roots is somewhere Claude Code also wrote (a container that bind-mounts
 # its own ~/.claude, a second machine's history copied across), not a
 # replacement for your own.
-EXTRA_PROJECTS_DIRS_ENV = "CLAUDE_USAGE_PROJECTS_DIRS"
+EXTRA_PROJECTS_DIRS_ENV = "CODEX_CLAUDE_USAGE_PROJECTS_DIRS"
 
 # Higher number = higher priority when choosing a session's primary model.
 # Fable / Mythos are Anthropic's most capable class, so they outrank Opus.
@@ -170,7 +170,7 @@ def upsert_limit_events(conn, events):
 
 
 def _env_extra_dirs(env=None):
-    """Extra roots from CLAUDE_USAGE_PROJECTS_DIRS, in order, blanks dropped."""
+    """Extra roots from CODEX_CLAUDE_USAGE_PROJECTS_DIRS, in order, blanks dropped."""
     raw = (os.environ if env is None else env).get(EXTRA_PROJECTS_DIRS_ENV, "")
     return [Path(part) for part in raw.split(os.pathsep) if part.strip()]
 
@@ -1013,7 +1013,7 @@ def _scan_unlocked(conn, projects_dir=None, projects_dirs=None, verbose=True,
     # and it is that copy which makes the stream matter here rather than taste.
     # `scan_roots_for` was added with its copy already on stderr and these two
     # were left where they were, so ONE `cli.py scan` reported an absent
-    # CLAUDE_USAGE_PROJECTS_DIRS root on both streams at once, and `cli.py
+    # CODEX_CLAUDE_USAGE_PROJECTS_DIRS root on both streams at once, and `cli.py
     # dashboard` put it on the stdout carrying the authenticated URL a reader is
     # told to copy.
     #

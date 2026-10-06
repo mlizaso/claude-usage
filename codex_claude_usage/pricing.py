@@ -137,7 +137,7 @@ ESTIMATED_RATE_MODELS = set({
     # this table comes from a vendor price list.
     "gpt-5.3-codex-spark", "codex-auto-review",
 })
-RATE_OVERRIDE_ENV = "CLAUDE_USAGE_RATES"
+RATE_OVERRIDE_ENV = "CODEX_CLAUDE_USAGE_RATES"
 RATE_FIELDS = ("input", "output", "cache_read", "cache_write", "cache_write_1h")
 
 
@@ -145,7 +145,7 @@ def load_rate_overrides(path=None, env=None):
     """Replace or add per-model rates from a JSON file. Never raises.
 
     Replace built-in rates with your own contract prices or provide rates for
-    additional model IDs. Point `CLAUDE_USAGE_RATES` at a file like
+    additional model IDs. Point `CODEX_CLAUDE_USAGE_RATES` at a file like
 
         {"gpt-5.6-sol": {"input": 1.25, "output": 10.0, "cache_read": 0.125}}
 

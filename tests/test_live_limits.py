@@ -51,7 +51,7 @@ def _opener(payload, status=200, record=None):
     return open_url
 
 
-LIVE_ENV = {"CLAUDE_USAGE_LIVE_LIMITS": "1", "CLAUDE_USAGE_OAUTH_TOKEN": "tok"}
+LIVE_ENV = {"CODEX_CLAUDE_USAGE_LIVE_LIMITS": "1", "CODEX_CLAUDE_USAGE_OAUTH_TOKEN": "tok"}
 SAMPLE = {"utilization": {"limits": [
     {"kind": "weekly", "group": "weekly", "percent": 37, "severity": "normal",
      "resets_at": "2026-08-22T00:00:00+00:00", "scope": None, "is_active": True}]}}
@@ -71,14 +71,14 @@ class TestItIsOffUnlessAskedFor(unittest.TestCase):
         this tool to start making requests on their behalf."""
         calls = []
         self.assertIsNone(live_limits.fetch_utilization(
-            env={"CLAUDE_USAGE_OAUTH_TOKEN": "tok"},
+            env={"CODEX_CLAUDE_USAGE_OAUTH_TOKEN": "tok"},
             opener=_opener(SAMPLE, record=calls)))
         self.assertEqual(calls, [])
 
     def test_the_opt_in_alone_does_nothing_either(self):
         calls = []
         self.assertIsNone(live_limits.fetch_utilization(
-            env={"CLAUDE_USAGE_LIVE_LIMITS": "1"},
+            env={"CODEX_CLAUDE_USAGE_LIVE_LIMITS": "1"},
             opener=_opener(SAMPLE, record=calls)))
         self.assertEqual(calls, [])
 
@@ -375,7 +375,7 @@ class TestTheCredentialIsHandledCarefully(unittest.TestCase):
         """Sending the credential in clear text is worse than not answering, and
         silently upgrading the scheme would hide that somebody asked for it."""
         calls = []
-        env = dict(LIVE_ENV, CLAUDE_USAGE_LIMITS_URL="http://example.invalid/u")
+        env = dict(LIVE_ENV, CODEX_CLAUDE_USAGE_LIMITS_URL="http://example.invalid/u")
         self.assertIsNone(live_limits.fetch_utilization(
             env=env, opener=_opener(SAMPLE, record=calls)))
         self.assertEqual(calls, [], "a credential was sent over plain http")
@@ -425,7 +425,7 @@ class TestTheCredentialIsHandledCarefully(unittest.TestCase):
     def test_a_completed_fetch_does_not_retain_the_plaintext_credential(self):
         env = dict(
             LIVE_ENV,
-            CLAUDE_USAGE_OAUTH_TOKEN="completed-fetch-secret",
+            CODEX_CLAUDE_USAGE_OAUTH_TOKEN="completed-fetch-secret",
         )
         self.assertIsNotNone(live_limits.fetch_utilization(
             env=env, opener=_opener(SAMPLE)))
@@ -438,7 +438,7 @@ class TestTheCredentialIsHandledCarefully(unittest.TestCase):
 
     def test_a_surrogate_escaped_environment_token_falls_back_without_raising(self):
         """POSIX can surface undecodable environment bytes as lone surrogates."""
-        env = dict(LIVE_ENV, CLAUDE_USAGE_OAUTH_TOKEN="bad\udcfftoken")
+        env = dict(LIVE_ENV, CODEX_CLAUDE_USAGE_OAUTH_TOKEN="bad\udcfftoken")
         self.assertIsNone(
             live_limits.fetch_utilization(env=env, opener=_opener(SAMPLE))
         )
@@ -450,7 +450,7 @@ class TestTheCredentialIsHandledCarefully(unittest.TestCase):
         for token in ("line\nbreak", "space in token",
                       "x" * (live_limits.MAX_TOKEN_CHARS + 1)):
             with self.subTest(token_length=len(token)):
-                env = dict(LIVE_ENV, CLAUDE_USAGE_OAUTH_TOKEN=token)
+                env = dict(LIVE_ENV, CODEX_CLAUDE_USAGE_OAUTH_TOKEN=token)
                 self.assertIsNone(live_limits.fetch_utilization(
                     env=env, opener=should_not_open
                 ))
@@ -571,7 +571,7 @@ class TestAFailureFallsBackRatherThanBreaking(unittest.TestCase):
 
         try:
             self.assertIsNone(live_limits.fetch_utilization(
-                env=dict(LIVE_ENV, CLAUDE_USAGE_OAUTH_TOKEN=secret),
+                env=dict(LIVE_ENV, CODEX_CLAUDE_USAGE_OAUTH_TOKEN=secret),
                 timeout=0.1,
                 opener=blocked_open,
             ))

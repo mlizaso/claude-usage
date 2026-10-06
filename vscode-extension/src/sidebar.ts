@@ -71,7 +71,7 @@ export function renderHtml(
 <body>
 <div class="brand">${logo}<h1>Codex / Claude Usage</h1></div>
 <p>${escapeHtml(statusText) || "The dashboard server is not running yet."}</p>
-${showRetry ? `<p><a class="retry" href="command:claudeUsage.open">&#8635; Retry</a></p>` : ""}
+${showRetry ? `<p><a class="retry" href="command:codexClaudeUsage.open">&#8635; Retry</a></p>` : ""}
 <p class="hint">Run <code>Codex / Claude Usage: Open Dashboard</code> from the command palette.</p>
 </body>
 </html>`;
@@ -107,7 +107,7 @@ export function makeNonce(): string {
 }
 
 export class DashboardSidebar implements vscode.WebviewViewProvider {
-  public static readonly viewId = "claudeUsage.dashboard";
+  public static readonly viewId = "codexClaudeUsage.dashboard";
 
   private view: vscode.WebviewView | undefined;
   private currentUrl: string | null = null;
@@ -128,11 +128,11 @@ export class DashboardSidebar implements vscode.WebviewViewProvider {
   resolveWebviewView(view: vscode.WebviewView): void {
     this.view = view;
     // enableCommandUris lets the status pane's "Retry" link invoke
-    // claudeUsage.open via a command: URI. The pane renders only our own
+    // codexClaudeUsage.open via a command: URI. The pane renders only our own
     // trusted HTML (statusText is escaped), so allowing command URIs is safe.
     view.webview.options = {
       enableScripts: true,
-      enableCommandUris: ["claudeUsage.open"],
+      enableCommandUris: ["codexClaudeUsage.open"],
       localResourceRoots: this.extensionUri
         ? [vscode.Uri.joinPath(this.extensionUri, "resources")]
         : [],

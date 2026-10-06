@@ -41,7 +41,7 @@ import dashboard
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WEB_DIR = REPO_ROOT / "web"
-PACKAGE_DIR = REPO_ROOT / "claude_usage"
+PACKAGE_DIR = REPO_ROOT / "codex_claude_usage"
 
 # Every package module the app imports at runtime, DISCOVERED FROM DISK rather than
 # listed. A hardcoded list only guards the modules it already knows about: a new
@@ -380,13 +380,13 @@ class TestPackagingShipsEveryRuntimeFile(unittest.TestCase):
             with self.subTest(module=name):
                 self.assertIs(
                     importlib.import_module(name),
-                    importlib.import_module(f"claude_usage.{name}"),
+                    importlib.import_module(f"codex_claude_usage.{name}"),
                 )
 
     def test_pyproject_lists_every_module(self):
         path = REPO_ROOT / "pyproject.toml"
         table = _setuptools_table()
-        self.assertEqual(table["packages"], ["claude_usage"])
+        self.assertEqual(table["packages"], ["codex_claude_usage"])
         self.assertNotIn(
             "py-modules", table,
             "generic flat modules must not be installed into site-packages")
@@ -396,7 +396,7 @@ class TestPackagingShipsEveryRuntimeFile(unittest.TestCase):
 
         setuptools copies each source to `<destination>/<basename>` and ignores
         the source's own directory, so a part pasted into the
-        `share/claude-usage/web` group five lines above installs beside
+        `share/codex-claude-usage/web` group five lines above installs beside
         index.html — where `dashboard.app_js_parts`' `web/js/*.js` glob cannot
         see it. `load_app_js` only raises at zero parts, so the page is still
         assembled, minus the one that defines APP_CONFIG, and dies at load in
@@ -409,7 +409,7 @@ class TestPackagingShipsEveryRuntimeFile(unittest.TestCase):
                 installed.setdefault(source, []).append(destination)
         for asset in WEB_ASSETS:
             with self.subTest(asset=asset):
-                expected = "share/claude-usage/" + asset.rsplit("/", 1)[0]
+                expected = "share/codex-claude-usage/" + asset.rsplit("/", 1)[0]
                 self.assertEqual(
                     installed.get(asset), [expected],
                     f"pyproject must install {asset} into {expected}, not "
@@ -419,7 +419,7 @@ class TestPackagingShipsEveryRuntimeFile(unittest.TestCase):
     def test_dockerfile_copies_every_module_and_the_web_dir(self):
         path = REPO_ROOT / "Dockerfile"
         sources = set(_dockerfile_copy_sources())
-        self.assertIn("claude_usage", sources)
+        self.assertIn("codex_claude_usage", sources)
         self.assertIn("web", sources, "the page is not copied into the image")
 
     def test_homebrew_formula_installs_every_module_and_the_web_dir(self):
@@ -427,7 +427,7 @@ class TestPackagingShipsEveryRuntimeFile(unittest.TestCase):
         self.assertTrue(formulas, "no Homebrew formula found")
         for path in formulas:
             installed = _formula_install_args(path.read_text(encoding="utf-8"))
-            self.assertIn("claude_usage", installed)
+            self.assertIn("codex_claude_usage", installed)
             self.assertIn("web", installed)
 
     def test_extension_bundler_copies_every_module_and_asset(self):
@@ -482,8 +482,8 @@ class TestPackagingShipsEveryRuntimeFile(unittest.TestCase):
                 # Same rule as the web assets: the destination key decides where
                 # setuptools puts it, and `find_chart_file` looks under vendor/.
                 self.assertEqual(
-                    where, ["share/claude-usage/vendor"],
-                    f"{asset} must install into share/claude-usage/vendor")
+                    where, ["share/codex-claude-usage/vendor"],
+                    f"{asset} must install into share/codex-claude-usage/vendor")
 
         path = REPO_ROOT / "vscode-extension" / "scripts" / "copy-python.js"
         listed = {f for f in _copy_python_files(path.read_text(encoding="utf-8"))
@@ -762,7 +762,7 @@ class TestDockerBuildContextCarriesWhatTheDockerfileCopies(unittest.TestCase):
         """
         _, exceptions = _dockerignore_patterns()
         pinned = _setuptools_table()["data-files"].get(
-            "share/claude-usage/vendor", [])
+            "share/codex-claude-usage/vendor", [])
         self.assertTrue(pinned, "pyproject installs no vendor asset at all")
         for asset in pinned:
             with self.subTest(asset=asset):
@@ -831,7 +831,7 @@ class TestTheIconResolvesInEveryDeliverySurface(unittest.TestCase):
     .vsix has a copy of it (put there by vsce, not by `copy-python.js`), so the
     two surfaces a developer actually looks at both worked. Homebrew installs
     `libexec/{web,vendor}` plus the modules, pip installs
-    `share/claude-usage/{web,vendor}`, and the Docker image copies `web` and
+    `share/codex-claude-usage/{web,vendor}`, and the Docker image copies `web` and
     `vendor` — none of the three carries `vscode-extension/` in any form, so on
     all three the route 404'd while the page around it rendered normally.
     `web/app.css` masks `header .header-icon` with the URL unconditionally and
@@ -918,8 +918,8 @@ class TestTheIconResolvesInEveryDeliverySurface(unittest.TestCase):
         root = self.tmp / "pip"
         module_dir = root / "lib" / "python3.13" / "site-packages"
         module_dir.mkdir(parents=True)
-        self.assertEqual(table["packages"], ["claude_usage"])
-        package_dir = module_dir / "claude_usage"
+        self.assertEqual(table["packages"], ["codex_claude_usage"])
+        package_dir = module_dir / "codex_claude_usage"
         package_dir.mkdir()
         for module in RUNTIME_MODULES:
             (package_dir / Path(module).name).write_text("", encoding="utf-8")
@@ -938,7 +938,7 @@ class TestTheIconResolvesInEveryDeliverySurface(unittest.TestCase):
                 shutil.copytree(source, libexec / arg)
             else:
                 self._place(libexec, arg, source)
-        return libexec / "claude_usage"
+        return libexec / "codex_claude_usage"
 
     def _build_docker_layout(self):
         """WORKDIR /app, filled by the COPYs through the real admission rule.
@@ -959,7 +959,7 @@ class TestTheIconResolvesInEveryDeliverySurface(unittest.TestCase):
                         self._place(app, relative, child)
             elif path.is_file() and _context_admits(source, exceptions):
                 self._place(app, source, path)
-        return app / "claude_usage"
+        return app / "codex_claude_usage"
 
     def _build_vsix_layout(self):
         """`copy-python.js` fills `python/`; vsce carries `resources/` itself.
@@ -978,7 +978,7 @@ class TestTheIconResolvesInEveryDeliverySurface(unittest.TestCase):
             self._place(python_dir, entry, REPO_ROOT / entry)
         self._place(extension, "resources/icon.svg",
                     REPO_ROOT / "vscode-extension" / "resources" / "icon.svg")
-        return python_dir / "claude_usage", extension
+        return python_dir / "codex_claude_usage", extension
 
     # --- the five assertions ------------------------------------------------
 
@@ -987,7 +987,7 @@ class TestTheIconResolvesInEveryDeliverySurface(unittest.TestCase):
         resolved = self._resolve_from(module_dir, prefix=root)
         self._assert_serves_the_icon(resolved, root)
         self.assertEqual(resolved,
-                         root / "share" / "claude-usage" / "web" / "icon.svg")
+                         root / "share" / "codex-claude-usage" / "web" / "icon.svg")
 
     def test_a_homebrew_install_serves_the_icon(self):
         formulas = list((REPO_ROOT / "Formula").glob("*.rb"))
@@ -1043,11 +1043,11 @@ class TestTheIconResolvesInEveryDeliverySurface(unittest.TestCase):
         answers and is checked for that instead.
         """
         module_dir, pip_root = self._build_pip_layout()
-        brew = self._build_homebrew_layout(REPO_ROOT / "Formula" / "claude-usage.rb")
+        brew = self._build_homebrew_layout(REPO_ROOT / "Formula" / "codex-claude-usage.rb")
         docker = self._build_docker_layout()
         vsix_python, vsix_root = self._build_vsix_layout()
         for label, module_root, layout_root, prefix in (
-            ("pip", module_dir, pip_root / "share" / "claude-usage", pip_root),
+            ("pip", module_dir, pip_root / "share" / "codex-claude-usage", pip_root),
             ("homebrew", brew, brew.parent, None),
             ("docker", docker, docker.parent, None),
         ):
@@ -1244,7 +1244,7 @@ class TestTheCopyrightNoticeTravelsWithTheSoftware(unittest.TestCase):
             missing.append("Docker (no COPY of LICENSE)")
         if not names_it(REPO_ROOT / ".dockerignore"):
             missing.append("Docker (LICENSE not in the build context)")
-        if not names_it(REPO_ROOT / "Formula" / "claude-usage.rb"):
+        if not names_it(REPO_ROOT / "Formula" / "codex-claude-usage.rb"):
             missing.append("Homebrew (formula does not install LICENSE)")
         if not (REPO_ROOT / "vscode-extension" / "LICENSE").is_file():
             missing.append(".vsix (no LICENSE at the extension root)")

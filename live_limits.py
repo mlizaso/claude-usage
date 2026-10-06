@@ -1,5 +1,5 @@
-"""Compatibility alias for :mod:`claude_usage.live_limits`."""
+"""Compatibility alias for :mod:`codex_claude_usage.live_limits`."""
 
-from claude_usage._compat import alias_module as _alias_module
+from codex_claude_usage._compat import alias_module as _alias_module
 
-_alias_module(__name__, "claude_usage.live_limits")
+_alias_module(__name__, "codex_claude_usage.live_limits")

@@ -223,7 +223,7 @@ export function findOnPath(
  *
  * This used to be `string | undefined`, and that `undefined` collapsed the two
  * failures a user has to be told apart. The caller could not distinguish them
- * and guessed, so someone with a stale `claudeUsage.pythonPath` and a perfectly
+ * and guessed, so someone with a stale `codexClaudeUsage.pythonPath` and a perfectly
  * good `python3` on their `PATH` was told to install Python on their `PATH` —
  * advice that is wrong twice over, because with that setting non-empty the
  * `PATH` is never looked at.

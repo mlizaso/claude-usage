@@ -37,7 +37,7 @@ sys.path.insert(0, str(REPO_ROOT))
 import limits_core
 import limits_server
 import dashboard
-from claude_usage import loopback_http
+from codex_claude_usage import loopback_http
 from safetext import terminal_safe
 
 
@@ -735,10 +735,10 @@ class TestTheSmallServerIsActuallySmall(unittest.TestCase):
             "import limits_server\n"
             "heavy = {'scanner','db','dashboard','dashboard_data',"
             "'transcripts','codex_transcripts','rollups','cli','reports',"
-            "'claude_usage.scanner','claude_usage.db',"
-            "'claude_usage.dashboard','claude_usage.dashboard_data',"
-            "'claude_usage.transcripts','claude_usage.codex_transcripts',"
-            "'claude_usage.rollups','claude_usage.cli','claude_usage.reports'}\n"
+            "'codex_claude_usage.scanner','codex_claude_usage.db',"
+            "'codex_claude_usage.dashboard','codex_claude_usage.dashboard_data',"
+            "'codex_claude_usage.transcripts','codex_claude_usage.codex_transcripts',"
+            "'codex_claude_usage.rollups','codex_claude_usage.cli','codex_claude_usage.reports'}\n"
             "print(','.join(sorted(heavy & set(sys.modules))))\n" % str(REPO_ROOT)
         )
         proc = subprocess.run([sys.executable, "-c", code], capture_output=True,

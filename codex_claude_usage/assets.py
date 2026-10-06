@@ -11,8 +11,8 @@ PREFIX_SEARCH_DEPTH = 4
 def asset_roots(module_file):
     """Return candidate roots for checkout and installed asset layouts."""
     here = Path(module_file).resolve().parent
-    roots = [here, here.parent, Path(sys.prefix) / "share" / "claude-usage"]
-    roots.extend(parent / "share" / "claude-usage"
+    roots = [here, here.parent, Path(sys.prefix) / "share" / "codex-claude-usage"]
+    roots.extend(parent / "share" / "codex-claude-usage"
                  for parent in list(here.parents)[:PREFIX_SEARCH_DEPTH])
     # Preserve nearest-first order without repeated filesystem probes.
     return list(dict.fromkeys(roots))

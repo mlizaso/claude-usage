@@ -75,9 +75,9 @@ class TestPublicationHygiene(unittest.TestCase):
             print(json.dumps({
                 'payloads': summaries,
                 'source_response': json.loads(sources),
-                'rates_override': os.environ.get('CLAUDE_USAGE_RATES'),
-                'docker': os.environ['CLAUDE_USAGE_DOCKER'],
-                'live_limits': os.environ['CLAUDE_USAGE_LIVE_LIMITS'],
+                'rates_override': os.environ.get('CODEX_CLAUDE_USAGE_RATES'),
+                'docker': os.environ['CODEX_CLAUDE_USAGE_DOCKER'],
+                'live_limits': os.environ['CODEX_CLAUDE_USAGE_LIVE_LIMITS'],
             }))
         ''')
         with tempfile.TemporaryDirectory() as name:
@@ -86,14 +86,14 @@ class TestPublicationHygiene(unittest.TestCase):
             directory.mkdir()
             forbidden = temporary / 'private'
             env = {key: value for key, value in os.environ.items()
-                   if not key.startswith('CLAUDE_USAGE_')}
+                   if not key.startswith('CODEX_CLAUDE_USAGE_')}
             env.update({
-                'CLAUDE_USAGE_RATES': str(forbidden / 'rates.json'),
-                'CLAUDE_USAGE_DB': str(forbidden / 'usage.db'),
-                'CLAUDE_USAGE_CONFIG': str(forbidden / 'account.json'),
-                'CLAUDE_USAGE_PROJECTS_DIRS': str(forbidden / 'transcripts'),
-                'CLAUDE_USAGE_DOCKER': '1',
-                'CLAUDE_USAGE_LIVE_LIMITS': '1',
+                'CODEX_CLAUDE_USAGE_RATES': str(forbidden / 'rates.json'),
+                'CODEX_CLAUDE_USAGE_DB': str(forbidden / 'usage.db'),
+                'CODEX_CLAUDE_USAGE_CONFIG': str(forbidden / 'account.json'),
+                'CODEX_CLAUDE_USAGE_PROJECTS_DIRS': str(forbidden / 'transcripts'),
+                'CODEX_CLAUDE_USAGE_DOCKER': '1',
+                'CODEX_CLAUDE_USAGE_LIVE_LIMITS': '1',
                 'PYTHONIOENCODING': 'utf-8',
             })
             result = subprocess.run(
@@ -150,7 +150,7 @@ class TestPublicationHygiene(unittest.TestCase):
         for name in PRIVATE_EXAMPLES:
             with self.subTest(private_path=name):
                 self.assertTrue(PUBLICATION["is_private_path"](name))
-        for name in (".env.example", "nested/.env.sample", "claude_usage/db.py",
+        for name in (".env.example", "nested/.env.sample", "codex_claude_usage/db.py",
                      "vscode-extension/package-lock.json", "docs/PRIVACY.md"):
             with self.subTest(public_path=name):
                 self.assertFalse(PUBLICATION["is_private_path"](name))

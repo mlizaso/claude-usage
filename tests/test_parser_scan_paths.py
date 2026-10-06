@@ -30,7 +30,7 @@ from unittest import mock
 import codex_transcripts
 import scanner
 import transcripts
-from claude_usage import timestamps
+from codex_claude_usage import timestamps
 
 
 def _claude(message_id, ts, out, session="s-1", model="claude-opus-5"):

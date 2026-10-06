@@ -241,7 +241,7 @@ class TestVersionConstantRationale(unittest.TestCase):
         lets the pattern above drop the word `Python` from the noun without
         tripping over ordinary prose elsewhere in the module.
         """
-        source = (REPO_ROOT / "claude_usage" / "scanner.py").read_text(
+        source = (REPO_ROOT / "codex_claude_usage" / "scanner.py").read_text(
             encoding="utf-8")
         return source[:source.index("VERSION = ")]
 
@@ -609,14 +609,14 @@ class TestScanRootResolution(unittest.TestCase):
     def test_the_env_var_is_additive_too(self):
         roots, _ = resolve_scan_roots(
             include_defaults=True,
-            env={"CLAUDE_USAGE_PROJECTS_DIRS": os.pathsep.join([str(self.a), str(self.b)])})
+            env={"CODEX_CLAUDE_USAGE_PROJECTS_DIRS": os.pathsep.join([str(self.a), str(self.b)])})
         self.assertIn(self.a, roots)
         self.assertIn(self.b, roots)
 
     def test_flag_and_env_roots_combine(self):
         roots, _ = resolve_scan_roots(
             projects_dirs=[self.a],
-            env={"CLAUDE_USAGE_PROJECTS_DIRS": str(self.b)})
+            env={"CODEX_CLAUDE_USAGE_PROJECTS_DIRS": str(self.b)})
         self.assertEqual(roots, [self.a, self.b])
 
     def test_blank_entries_in_the_env_var_are_ignored(self):
@@ -624,7 +624,7 @@ class TestScanRootResolution(unittest.TestCase):
         must not turn into a root of ''  — which resolves to the cwd."""
         raw = os.pathsep.join([str(self.a), "", "   "])
         roots, missing = resolve_scan_roots(
-            env={"CLAUDE_USAGE_PROJECTS_DIRS": raw})
+            env={"CODEX_CLAUDE_USAGE_PROJECTS_DIRS": raw})
         self.assertEqual(roots, [self.a])
         self.assertEqual(missing, [])
 

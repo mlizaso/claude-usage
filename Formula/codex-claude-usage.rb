@@ -1,17 +1,17 @@
-class ClaudeUsage < Formula
+class CodexClaudeUsage < Formula
   desc "Codex / Claude Usage dashboard for tokens, costs, and sessions"
-  homepage "https://github.com/mlizaso/claude-usage"
+  homepage "https://github.com/mlizaso/codex-claude-usage"
   license "MIT"
   # Head-only by design: a stable formula embedded in its own source archive
   # cannot pin that archive without a self-referential checksum. Requiring
   # --HEAD also prevents this security-hardened fork from installing an older,
   # unhardened upstream release.
-  head "https://github.com/mlizaso/claude-usage.git", branch: "main"
+  head "https://github.com/mlizaso/codex-claude-usage.git", branch: "main"
 
   depends_on "python@3.13"
 
   def install
-    libexec.install "claude_usage"
+    libexec.install "codex_claude_usage"
     # The MIT notice travels with the software: the licence requires it in
     # "all copies or substantial portions", and a keg is one.
     libexec.install "LICENSE"
@@ -22,7 +22,7 @@ class ClaudeUsage < Formula
     # only ship "python3.13" in their bin — the unversioned "python3" symlink
     # lives in libexec/bin, so opt_bin/"python3" doesn't exist and the shim
     # fails at runtime with "No such file or directory" (#46).
-    (bin/"claude-usage").write <<~EOS
+    (bin/"codex-claude-usage").write <<~EOS
       #!/bin/bash
       safe_env=(
         "HOME=$HOME"
@@ -36,11 +36,11 @@ class ClaudeUsage < Formula
         # (and could not, given `-I -S` and the shim's own sys.path setup).
         # Set here rather than sniffed in Python: this script is the only thing
         # that knows the name on PATH.
-        "CLAUDE_USAGE_INVOKED_AS=claude-usage"
+        "CODEX_CLAUDE_USAGE_INVOKED_AS=codex-claude-usage"
       )
       # `env -i` below erases everything this list does not name, so a variable
       # left out of it does not fail — it silently does nothing. Measured
-      # 2026-08-10 against a keg replica of this shim: with CLAUDE_USAGE_RATES
+      # 2026-08-10 against a keg replica of this shim: with CODEX_CLAUDE_USAGE_RATES
       # dropped, `stats` reported $30.0000 where the same command from a clone
       # of the same commit reported $2.0000, and there is no --rates flag to
       # fall back to. tests/test_brew_shim_env.py holds this list, and the
@@ -50,11 +50,11 @@ class ClaudeUsage < Formula
       passthrough=(
         LANG LANGUAGE LC_ALL LC_CTYPE
         HOST PORT
-        CLAUDE_USAGE_DB CLAUDE_USAGE_RATES CLAUDE_USAGE_PROJECTS_DIRS
-        CLAUDE_USAGE_DOCKER
-        CLAUDE_USAGE_THRESHOLDS LIMITS_PORT
-        CLAUDE_USAGE_LIVE_LIMITS CLAUDE_USAGE_LIMITS_URL
-        CLAUDE_CONFIG_DIR CLAUDE_USAGE_CONFIG
+        CODEX_CLAUDE_USAGE_DB CODEX_CLAUDE_USAGE_RATES CODEX_CLAUDE_USAGE_PROJECTS_DIRS
+        CODEX_CLAUDE_USAGE_DOCKER
+        CODEX_CLAUDE_USAGE_THRESHOLDS LIMITS_PORT
+        CODEX_CLAUDE_USAGE_LIVE_LIMITS CODEX_CLAUDE_USAGE_LIMITS_URL
+        CLAUDE_CONFIG_DIR CODEX_CLAUDE_USAGE_CONFIG
       )
       for name in "${passthrough[@]}"; do
         if [[ -n "${!name:-}" ]]; then
@@ -71,15 +71,15 @@ class ClaudeUsage < Formula
       fi
       exec /usr/bin/env -i "${safe_env[@]}" \
         "#{formula_opt_bin("python@3.13")}/python3.13" -I -S -c \
-        'import runpy,sys; root=sys.argv[1]; sys.path.insert(0,root); sys.argv=sys.argv[1:]; runpy.run_module("claude_usage.cli",run_name="__main__")' \
+        'import runpy,sys; root=sys.argv[1]; sys.path.insert(0,root); sys.argv=sys.argv[1:]; runpy.run_module("codex_claude_usage.cli",run_name="__main__")' \
         "#{libexec}" "$@"
     EOS
-    chmod 0755, bin/"claude-usage"
+    chmod 0755, bin/"codex-claude-usage"
   end
 
   test do
     # 1. No-args invocation prints the usage banner — exercises the shim.
-    output = shell_output("#{bin}/claude-usage")
+    output = shell_output("#{bin}/codex-claude-usage")
     assert_match "Codex / Claude Usage Dashboard", output
     assert_match "scan", output
     assert_match "dashboard", output
@@ -89,7 +89,7 @@ class ClaudeUsage < Formula
     #    the user's real ~/.claude/usage.db. Homebrew's test sandbox provides
     #    testpath, so this stays isolated.
     (testpath/"projects").mkpath
-    scan_output = shell_output("#{bin}/claude-usage scan --projects-dir #{testpath}/projects")
+    scan_output = shell_output("#{bin}/codex-claude-usage scan --projects-dir #{testpath}/projects")
     assert_match "Scan complete", scan_output
   end
 end

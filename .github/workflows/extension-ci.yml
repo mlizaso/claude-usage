@@ -19,7 +19,7 @@ on:
       - "vscode-extension/**"
       - "docs/VS-CODE-EXTENSION.md"
       - "*.py"
-      - "claude_usage/**"
+      - "codex_claude_usage/**"
       - "web/**"
       - "vendor/**"
       - ".github/workflows/extension-ci.yml"
@@ -29,7 +29,7 @@ on:
       - "vscode-extension/**"
       - "docs/VS-CODE-EXTENSION.md"
       - "*.py"
-      - "claude_usage/**"
+      - "codex_claude_usage/**"
       - "web/**"
       - "vendor/**"
       - ".github/workflows/extension-ci.yml"
@@ -98,7 +98,7 @@ jobs:
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: claude-usage-extension-vsix
+          name: codex-claude-usage-extension-vsix
           path: vscode-extension/*.vsix
           if-no-files-found: error
           retention-days: 14

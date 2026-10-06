@@ -27,10 +27,10 @@ ROOT = Path(__file__).resolve().parent.parent
 def build_payloads(directory):
     """Build a fixture database directly; never discover or parse transcripts."""
     for key in tuple(os.environ):
-        if key.startswith('CLAUDE_USAGE_'):
+        if key.startswith('CODEX_CLAUDE_USAGE_'):
             del os.environ[key]
-    os.environ['CLAUDE_USAGE_DOCKER'] = '0'
-    os.environ['CLAUDE_USAGE_LIVE_LIMITS'] = '0'
+    os.environ['CODEX_CLAUDE_USAGE_DOCKER'] = '0'
+    os.environ['CODEX_CLAUDE_USAGE_LIVE_LIMITS'] = '0'
     real_data = tuple(Path.home() / part for part in (
         '.claude', '.codex', 'Library/Developer/Xcode/CodingAssistant'))
     real_account = Path.home() / '.claude.json'
@@ -45,8 +45,8 @@ def build_payloads(directory):
     sys.addaudithook(refuse_real_data)
     sys.path.insert(0, str(ROOT))
     with patch('pathlib.Path.home', return_value=directory):
-        from claude_usage import dashboard, dashboard_data
-        from claude_usage.scanner import get_db, init_db, insert_turns, upsert_sessions
+        from codex_claude_usage import dashboard, dashboard_data
+        from codex_claude_usage.scanner import get_db, init_db, insert_turns, upsert_sessions
 
     database = directory / 'demo.db'
     connection = get_db(database)
@@ -111,7 +111,7 @@ def render(browser, output):
     if hasattr(time, 'tzset'):
         time.tzset()
     output.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix='claude-usage-demo-') as name:
+    with tempfile.TemporaryDirectory(prefix='codex-claude-usage-demo-') as name:
         temporary = Path(name)
         page, payloads, sources = build_payloads(temporary)
         config = json.dumps({'version': '1.7.0 demo', 'surface': 'web', 'rate_overrides': {}})
@@ -120,7 +120,7 @@ def render(browser, output):
         pages = {}
         for view in ('overview', 'charts', 'tables'):
             probe = """<script nonce="demo">
-            localStorage.setItem('claude-usage-theme', 'light');
+            localStorage.setItem('codex-claude-usage-theme', 'light');
             applyTheme('light');
             const demoSource = '__DEMO_SOURCE__';
             let attempts = 0;

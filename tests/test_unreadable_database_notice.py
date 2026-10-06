@@ -402,7 +402,7 @@ class TestThePageStopsRetryingOnlyOnPermanent(unittest.TestCase):
         matched the comment that explains why the path was removed -- green
         would have meant nothing and red meant nothing. It named
         `~/.claude/usage.db` for one round, which is the wrong file whenever
-        CLAUDE_USAGE_DB is set (the Dockerfile sets it, and AGENTS.md tells
+        CODEX_CLAUDE_USAGE_DB is set (the Dockerfile sets it, and AGENTS.md tells
         users to set it per version to escape the two-installs rebuild loop):
         a reader following it moved a WORKING database aside and still had the
         broken one. The notice now tells them to run the command that prints

@@ -1,6 +1,6 @@
 """The Homebrew shim's environment allowlist, against what the product reads.
 
-`Formula/claude-usage.rb` runs the interpreter through `/usr/bin/env -i`, so the
+`Formula/codex-claude-usage.rb` runs the interpreter through `/usr/bin/env -i`, so the
 child process sees only the variables the shim names. That stripping is
 deliberate (commit 4bd948e, "fix(security): harden private dashboard runtime")
 and must stay. What is not deliberate is the *membership* of the list, which was
@@ -10,7 +10,7 @@ nothing, which is the worst shape a configuration bug can take.
 
 Measured 2026-08-10 against a keg replica of the shim (the formula's own heredoc,
 only the two `#{...}` interpolations substituted), on a one-turn database of
-1M in / 1M out at `claude-opus-5` with a `CLAUDE_USAGE_RATES` file naming
+1M in / 1M out at `claude-opus-5` with a `CODEX_CLAUDE_USAGE_RATES` file naming
 $1.00/$1.00:
 
     shim  `stats`, override set : Est. total cost:  $30.0000
@@ -18,10 +18,10 @@ $1.00/$1.00:
     clone `stats`, no override  : Est. total cost:  $30.0000
 
 The shim's answer is bit-identical to the no-override answer: the file was never
-read, nothing said so, and the reported money was 15x. `CLAUDE_USAGE_RATES` has
+read, nothing said so, and the reported money was 15x. `CODEX_CLAUDE_USAGE_RATES` has
 no flag equivalent anywhere in `cli.COMMAND_FLAGS`, so for a Homebrew user the
 documented override was not merely dropped, it was unreachable. Two more legs
-reproduced the same day: `CLAUDE_USAGE_PROJECTS_DIRS` gave "New files: 1" through
+reproduced the same day: `CODEX_CLAUDE_USAGE_PROJECTS_DIRS` gave "New files: 1" through
 the shim against "New files: 2" from a clone, and `TZ=Pacific/Auckland` bucketed a
 2026-08-09T14:00:00Z turn on 2026-08-09 through the shim against 2026-08-10 from
 a clone (with `TZ=UTC` the clone returns to 2026-08-09, which is the control
@@ -30,10 +30,10 @@ proving the clone honours TZ rather than ignoring it too).
 So the tables below are the point of this file, and they are hardcoded on BOTH
 sides on purpose. A test that *derived* the allowlist from the product's env
 reads would be worse than none: written the obvious way it misses
-`CLAUDE_USAGE_RATES` and `CLAUDE_USAGE_PROJECTS_DIRS` outright, because both are
+`CODEX_CLAUDE_USAGE_RATES` and `CODEX_CLAUDE_USAGE_PROJECTS_DIRS` outright, because both are
 read through a module constant rather than a string literal, and it would have
 certified the broken allowlist; written well enough to resolve those constants it
-drags in `CLAUDE_USAGE_ALLOW_CONTAINER_BIND` — the single gate that lets
+drags in `CODEX_CLAUDE_USAGE_ALLOW_CONTAINER_BIND` — the single gate that lets
 `validate_bind_host` return a non-loopback address — and turns "the product reads
 it" into a proof obligation that the shim forward it. That inverts the commit the
 stripping came from. The derivation below is therefore used only to prove the
@@ -59,29 +59,29 @@ import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-FORMULA = REPO_ROOT / "Formula" / "claude-usage.rb"
+FORMULA = REPO_ROOT / "Formula" / "codex-claude-usage.rb"
 
 # Forwarded because the product reads them and the reader is meant to set them.
 # The reason matters as much as the name: this is the table a maintainer reads
 # when deciding where a new variable goes.
 FORWARDED = {
-    "CLAUDE_USAGE_DOCKER": "opts out of automatic local container usage collection",
+    "CODEX_CLAUDE_USAGE_DOCKER": "opts out of automatic local container usage collection",
     "HOST": "the dashboard's bind address, documented beside PORT",
     "PORT": "the dashboard's port, documented beside HOST",
-    "CLAUDE_USAGE_DB": "relocates usage.db; the only one that was never dropped",
-    "CLAUDE_USAGE_LIVE_LIMITS": (
+    "CODEX_CLAUDE_USAGE_DB": "relocates usage.db; the only one that was never dropped",
+    "CODEX_CLAUDE_USAGE_LIVE_LIMITS": (
         "opts into the live quota query (live_limits.ENABLE_ENV). Forwarded "
         "because it is the switch the reader sets; dropping it would silently "
         "return them to the stale cache they turned this on to escape"
     ),
-    "CLAUDE_USAGE_LIMITS_URL": (
+    "CODEX_CLAUDE_USAGE_LIMITS_URL": (
         "overrides the quota endpoint (live_limits.ENDPOINT_ENV). Forwarded "
-        "for the same reason as CLAUDE_USAGE_RATES: it names something the "
+        "for the same reason as CODEX_CLAUDE_USAGE_RATES: it names something the "
         "reader chose, and dropping it silently queries somewhere else"
     ),
-    "CLAUDE_USAGE_THRESHOLDS": (
+    "CODEX_CLAUDE_USAGE_THRESHOLDS": (
         "relocates the per-window alert thresholds (limits_core.THRESHOLDS_ENV). "
-        "Forwarded for the same reason as CLAUDE_USAGE_DB: it names a file the "
+        "Forwarded for the same reason as CODEX_CLAUDE_USAGE_DB: it names a file the "
         "reader chose, and dropping it silently moves their alert settings to "
         "the default path, where a threshold they set would appear to vanish"
     ),
@@ -91,17 +91,17 @@ FORWARDED = {
         "reader asked for something else -- the failure PORT's own entry "
         "exists to prevent"
     ),
-    "CLAUDE_USAGE_RATES": (
+    "CODEX_CLAUDE_USAGE_RATES": (
         "user-supplied prices (pricing.RATE_OVERRIDE_ENV). Dropping it reported "
         "$30.0000 where a clone reported $2.0000, and there is no --rates flag "
         "to fall back to"
     ),
-    "CLAUDE_USAGE_PROJECTS_DIRS": (
+    "CODEX_CLAUDE_USAGE_PROJECTS_DIRS": (
         "extra transcript roots (scanner.EXTRA_PROJECTS_DIRS_ENV), named by "
         "README and by the usage banner the brew binary itself prints"
     ),
     "CLAUDE_CONFIG_DIR": "relocates ~/.claude, so the plan panel reads the right install",
-    "CLAUDE_USAGE_CONFIG": "points at a specific .claude.json, same class as above",
+    "CODEX_CLAUDE_USAGE_CONFIG": "points at a specific .claude.json, same class as above",
 }
 
 # Forwarded although no line of Python reads them: the interpreter, libc and
@@ -123,22 +123,22 @@ FORWARDED_OS = {
 # rediscover it as a bug.
 WITHHELD = {
     "ProgramFiles": "Windows-only Docker installation root; Homebrew does not use it",
-    "CLAUDE_USAGE_API_TOKEN": (
+    "CODEX_CLAUDE_USAGE_API_TOKEN": (
         "credential-shaped, and omitted by 4bd948e itself — the commit that "
         "wrote this allowlist, at a tree where the variable already existed. "
         "The product degrades safely without it: dashboard.py mints a fresh "
         "secrets.token_urlsafe(32) and delivers it through the dashboard-url "
-        "file that `claude-usage url` reads"
+        "file that `codex-claude-usage url` reads"
     ),
-    "CLAUDE_USAGE_HEALTH_TOKEN": "credential-shaped, same commit, same reasoning",
-    "CLAUDE_USAGE_TOKEN_COMMAND": (
+    "CODEX_CLAUDE_USAGE_HEALTH_TOKEN": "credential-shaped, same commit, same reasoning",
+    "CODEX_CLAUDE_USAGE_TOKEN_COMMAND": (
         "names a command that PRINTS a credential (live_limits.TOKEN_COMMAND_ENV), "
         "so forwarding it would let a packaged launcher run an arbitrary command "
         "from the reader's environment and hand the result to a network request. "
         "Withheld for the same reason as the token it produces, and with the "
         "same remedy: export it and run the module directly"
     ),
-    "CLAUDE_USAGE_OAUTH_TOKEN": (
+    "CODEX_CLAUDE_USAGE_OAUTH_TOKEN": (
         "credential-shaped, and the most sensitive variable this product reads "
         "-- it can act as the user against Anthropic. Withheld for the same "
         "reason as the two above: the shim's `env -i` allowlist is the boundary "
@@ -147,17 +147,17 @@ WITHHELD = {
         "who wants live limits under Homebrew can export it and run the module "
         "directly"
     ),
-    "CLAUDE_USAGE_ALLOW_CONTAINER_BIND": (
+    "CODEX_CLAUDE_USAGE_ALLOW_CONTAINER_BIND": (
         "the only thing that lets validate_bind_host return a non-loopback "
         "address. Docker-only, injected by scripts/run-docker.sh inside the "
         "container; forwarding it through a HOST shim weakens a bind guard for "
         "no benefit"
     ),
-    "CLAUDE_USAGE_SUPPRESS_AUTH_URL": (
+    "CODEX_CLAUDE_USAGE_SUPPRESS_AUTH_URL": (
         "Docker-only, same source. It silences the printed authenticated URL, "
         "which for a brew user is their only on-screen link"
     ),
-    "CLAUDE_USAGE_DOCKER_CONTAINER": (
+    "CODEX_CLAUDE_USAGE_DOCKER_CONTAINER": (
         "Docker-only, injected by scripts/run-docker.sh so recovery advice can "
         "enter the managed app container and reach /data. Forwarding a shell "
         "value through Homebrew could only put an unrelated container name in "
@@ -176,11 +176,11 @@ WITHHELD = {
 # Set unconditionally rather than forwarded. PATH is REPLACED (it points at the
 # python@3.13 keg), so it is not a passthrough at all and must never be treated
 # as one.
-UNCONDITIONAL = {"HOME", "PATH", "TMPDIR", "CLAUDE_USAGE_INVOKED_AS"}
+UNCONDITIONAL = {"HOME", "PATH", "TMPDIR", "CODEX_CLAUDE_USAGE_INVOKED_AS"}
 
 
 def _shim_source(text=None):
-    """The generated `bin/claude-usage`, rendered from the formula's heredoc.
+    """The generated `bin/codex-claude-usage`, rendered from the formula's heredoc.
 
     `text` overrides the file so a spelling the repo must never carry can still
     be run through the real parser, the way `_formula_install_args` and friends
@@ -195,10 +195,10 @@ def _shim_source(text=None):
     """
     if text is None:
         text = FORMULA.read_text(encoding="utf-8")
-    raw = re.search(r'\(bin/"claude-usage"\)\.write <<~EOS\n(.*?)^\s*EOS$',
+    raw = re.search(r'\(bin/"codex-claude-usage"\)\.write <<~EOS\n(.*?)^\s*EOS$',
                     text, re.S | re.M)
     if raw is None:
-        raise AssertionError("Formula no longer writes bin/claude-usage from a "
+        raise AssertionError("Formula no longer writes bin/codex-claude-usage from a "
                              "<<~EOS heredoc; this parser must be updated")
     body = textwrap.dedent(raw.group(1)).replace("\\\n", "")
     body = re.sub(r'#\{formula_opt_bin\("([^"]+)"\)\}', r"/OPT/\1", body)
@@ -236,8 +236,8 @@ def _env_names_read(path):
     string literals cannot see, and between them they hide four names — two of
     which are the ones this file exists for.
     """
-    module_name = ("claude_usage" if path.stem == "__init__"
-                   else f"claude_usage.{path.stem}")
+    module_name = ("codex_claude_usage" if path.stem == "__init__"
+                   else f"codex_claude_usage.{path.stem}")
     module = importlib.import_module(module_name)
     tree = ast.parse(path.read_text(encoding="utf-8"))
     parents = {child: node for node in ast.walk(tree)
@@ -288,7 +288,7 @@ def _env_names_read(path):
 
 def _all_env_names_read():
     names, unresolved = set(), []
-    for path in sorted((REPO_ROOT / "claude_usage").glob("*.py")):
+    for path in sorted((REPO_ROOT / "codex_claude_usage").glob("*.py")):
         found, bad = _env_names_read(path)
         names |= found
         unresolved += bad
@@ -334,7 +334,7 @@ class TestTheAllowlistIsTheProductsAllowlist(unittest.TestCase):
         # resolution and these four disappear, taking the two variables this
         # file exists for with them, and every assertion above still passes.
         names, _ = _all_env_names_read()
-        for name in ("CLAUDE_USAGE_RATES", "CLAUDE_USAGE_PROJECTS_DIRS",
+        for name in ("CODEX_CLAUDE_USAGE_RATES", "CODEX_CLAUDE_USAGE_PROJECTS_DIRS",
                      "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
             self.assertIn(name, names)
 
@@ -379,17 +379,17 @@ class TestTheShimBehaves(unittest.TestCase):
             root = Path(tmp)
             (root / "bin").mkdir()
             (root / "libexec").mkdir()
-            (root / "libexec" / "claude_usage").mkdir()
+            (root / "libexec" / "codex_claude_usage").mkdir()
             (root / "bin" / "python3.13").symlink_to(sys.executable)
-            (root / "libexec" / "claude_usage" / "__init__.py").write_text(
+            (root / "libexec" / "codex_claude_usage" / "__init__.py").write_text(
                 "", encoding="utf-8")
-            (root / "libexec" / "claude_usage" / "cli.py").write_text(
+            (root / "libexec" / "codex_claude_usage" / "cli.py").write_text(
                 "import json, os\nprint(json.dumps(dict(os.environ)))\n",
                 encoding="utf-8")
             shim = _shim_source(body)
             shim = shim.replace("/OPT/python@3.13", str(root / "bin"))
             shim = shim.replace("/LIBEXEC", str(root / "libexec"))
-            script = root / "claude-usage"
+            script = root / "codex-claude-usage"
             script.write_text(shim, encoding="utf-8")
             script.chmod(0o755)
             done = subprocess.run([str(script)], capture_output=True, text=True,
@@ -444,7 +444,7 @@ class TestTheShimBehaves(unittest.TestCase):
         # This is the only thing standing between that reimplementation and
         # every behavioural assertion above quietly testing a shim Homebrew
         # would never write.
-        raw = re.search(r'\(bin/"claude-usage"\)\.write <<~EOS\n(.*?)^\s*EOS$',
+        raw = re.search(r'\(bin/"codex-claude-usage"\)\.write <<~EOS\n(.*?)^\s*EOS$',
                         FORMULA.read_text(encoding="utf-8"), re.S | re.M).group(1)
         program = ('def formula_opt_bin(x); "/OPT/" + x; end\n'
                    'def libexec; "/LIBEXEC"; end\n'

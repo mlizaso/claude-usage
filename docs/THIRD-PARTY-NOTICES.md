@@ -4,7 +4,7 @@
 
 The project is distributed under the MIT license. The original copyright
 notice credits Pawel Huryn. Subsequent contributions remain under MIT.
-Preserve the complete [project license](https://github.com/mlizaso/claude-usage/blob/main/LICENSE)
+Preserve the complete [project license](https://github.com/mlizaso/codex-claude-usage/blob/main/LICENSE)
 when distributing copies or substantial portions of the software.
 
 The project originated from [phuryn/claude-usage](https://github.com/phuryn/claude-usage).
@@ -15,7 +15,7 @@ history does not transfer authorship of upstream work to the fork maintainer.
 
 `vendor/chart.umd.js` is a pinned third-party browser runtime. Its MIT copyright
 and permission notice is in
-[LICENSE.chartjs.md](https://github.com/mlizaso/claude-usage/blob/main/vendor/LICENSE.chartjs.md).
+[LICENSE.chartjs.md](https://github.com/mlizaso/codex-claude-usage/blob/main/vendor/LICENSE.chartjs.md).
 That notice must accompany the asset in Python, Docker, Homebrew and VSIX builds.
 The bundled header identifies the version; packaging checks verify its checksum.
 

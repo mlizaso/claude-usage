@@ -17,10 +17,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TESTS_DIR = Path(__file__).resolve().parent
 
-# The extension id this fork shipped under up to and including v1.6.1, whose
-# release asset is claude-usage-private-1.6.1.vsix. v1.7.0 dropped the suffix,
-# so the id moved while every contribution id stayed byte-identical.
-LEGACY_EXTENSION_ID = "mlizaso.claude-usage-private"
+# Earlier extension identities are frozen migration inputs, not current names.
+# v1.6.1 used the private suffix; v1.7.0 removed it before the full project rename.
+LEGACY_EXTENSION_IDS = (
+    "mlizaso.claude-usage",
+    "mlizaso.claude-usage-private",
+)
+CURRENT_EXTENSION_ID = "mlizaso.codex-claude-usage"
 
 
 # --------------------------------------------------------------------------
@@ -140,7 +143,7 @@ def _bash_code_lines(body):
     this module pins appears in their comment prose as well as in their code",
     and that is false for every one of them: measured 2026-08-14, no string
     this module pins against either bash file's TEXT currently sits in that
-    file's comment prose. What does sit there is `LEGACY_EXTENSION_ID`
+    file's comment prose. What does sit there is `LEGACY_EXTENSION_IDS`
     (install.sh:48, the sentence describing the rename) -- pinned against the
     executed stub's call LOG, not against the file -- so the negative absolute
     is false too and must not be written in its place. Both halves are a
@@ -947,19 +950,41 @@ class TestExtensionSecurityManifest(unittest.TestCase):
         )
 
     def test_private_identity_and_local_execution(self):
-        self.assertEqual(self.package["name"], "claude-usage")
+        self.assertEqual(self.package["name"], "codex-claude-usage")
         self.assertIs(self.package["private"], True)
         self.assertEqual(self.package["publisher"], "mlizaso")
+        self.assertEqual(
+            self.package["publisher"] + "." + self.package["name"],
+            CURRENT_EXTENSION_ID)
         self.assertEqual(self.package["extensionKind"], ["ui"])
 
     def test_process_settings_are_machine_scoped(self):
         properties = self.package["contributes"]["configuration"]["properties"]
         for name in (
-            "claudeUsage.pythonPath",
-            "claudeUsage.cliPath",
-            "claudeUsage.port",
+            "codexClaudeUsage.pythonPath",
+            "codexClaudeUsage.cliPath",
+            "codexClaudeUsage.port",
         ):
             self.assertEqual(properties[name]["scope"], "machine")
+
+    def test_all_contribution_identifiers_use_the_new_name(self):
+        contributes = self.package["contributes"]
+        self.assertEqual(
+            {command["command"] for command in contributes["commands"]},
+            {"codexClaudeUsage." + suffix
+             for suffix in ("open", "rescan", "restart", "showLogs")})
+        self.assertEqual(
+            [container["id"]
+             for container in contributes["viewsContainers"]["activitybar"]],
+            ["codexClaudeUsageSidebar"])
+        self.assertEqual(set(contributes["views"]), {"codexClaudeUsageSidebar"})
+        self.assertEqual(
+            [view["id"] for view in contributes["views"]["codexClaudeUsageSidebar"]],
+            ["codexClaudeUsage.dashboard"])
+        self.assertEqual(
+            set(contributes["configuration"]["properties"]),
+            {"codexClaudeUsage." + suffix
+             for suffix in ("pythonPath", "cliPath", "port")})
 
     def test_package_has_no_publish_script(self):
         self.assertNotIn("publish", self.package["scripts"])
@@ -1027,20 +1052,13 @@ class TestExtensionSecurityManifest(unittest.TestCase):
         self.assertNotIn("[ -d node_modules ] ||", shell_installer)
 
 
-class TestLocalInstallersRetireTheSupersededExtensionId(unittest.TestCase):
+class TestLocalInstallersRetireTheSupersededExtensionIds(unittest.TestCase):
     """`--force` overwrites the same id; it does not remove a different one.
 
-    v1.7.0 moved the extension from mlizaso.claude-usage-private to
-    mlizaso.claude-usage while leaving every contribution id byte-identical --
-    the four claudeUsage.* commands, the claudeUsageSidebar container, the
-    claudeUsage.dashboard view and the three claudeUsage.* settings. What is
-    demonstrated by that pair of manifests is COEXISTENCE: an install of the new
-    .vsix over an old one leaves both extensions installed and enabled, each
-    declaring all of that. The precise runtime symptom is deliberately not
-    asserted anywhere -- with activationEvents [] VS Code may reject the
-    duplicate view and never activate the second extension, so whether the
-    reader sees duplicated palette/settings/activity-bar entries or a failed
-    activation is not something this repository has observed.
+    Both earlier extension ids must be retired when installing the renamed
+    extension. Installing the new .vsix alone leaves old extensions installed
+    and able to start their own dashboard servers. The new contribution ids
+    use codexClaudeUsage; the old ids here are intentional migration fixtures.
 
     A VS Code manifest cannot declare that it supersedes a previous id, so the
     installers have to do it. The removal must be best-effort: a new user does
@@ -1058,15 +1076,57 @@ class TestLocalInstallersRetireTheSupersededExtensionId(unittest.TestCase):
             encoding="utf-8"
         )
 
-    def test_both_installers_uninstall_the_legacy_id(self):
+    @staticmethod
+    def _code_cli_fixture(uninstall_exits):
+        # The stub is keyed by frozen old ids, independently of the script's
+        # loop. A wrong or repeated id therefore cannot silently succeed.
+        return (
+            "#!/bin/sh\n"
+            'printf "%s\\n" "$*" >> "$STUB_LOG"\n'
+            'case "$1:$2" in\n'
+            f"  --uninstall-extension:{LEGACY_EXTENSION_IDS[0]}) "
+            f"exit {uninstall_exits[0]} ;;\n"
+            f"  --uninstall-extension:{LEGACY_EXTENSION_IDS[1]}) "
+            f"exit {uninstall_exits[1]} ;;\n"
+            "  --install-extension:*) exit 0 ;;\n"
+            "  *) exit 99 ;;\n"
+            "esac\n"
+        )
+
+    def _assert_retirement_result(self, installer, completed, log, uninstall_exits):
+        self.assertEqual(
+            completed.returncode, 0,
+            f"{installer} exited {completed.returncode}: "
+            f"{completed.stdout}{completed.stderr}")
+        calls = log.splitlines()
+        expected_removals = [
+            f"--uninstall-extension {extension_id}"
+            for extension_id in LEGACY_EXTENSION_IDS
+        ]
+        self.assertEqual(
+            expected_removals,
+            [line for line in calls if "--uninstall-extension" in line],
+            f"{installer} must remove each earlier id once, and never the current id")
+        self.assertNotIn(f"--uninstall-extension {CURRENT_EXTENSION_ID}", calls)
+        self.assertEqual(expected_removals, calls[:2])
+        self.assertEqual(3, len(calls), f"{installer} must install after both removals")
+        self.assertTrue(calls[2].startswith("--install-extension "))
+        self.assertTrue(calls[2].endswith(" --force"))
+        for extension_id, exit_code in zip(LEGACY_EXTENSION_IDS, uninstall_exits):
+            self.assertEqual(
+                exit_code == 0,
+                f"Removed the superseded extension {extension_id}." in completed.stdout,
+                f"{installer}'s removal notice must follow that id's exit code")
+
+    def test_both_installers_uninstall_both_legacy_ids(self):
         """The flag and the id must be tied together, not merely both present.
 
-        Each script holds the id in a variable, so pinning it takes two linked
-        assertions: the uninstall call must pass THAT variable, and the variable
-        must be assigned THIS id -- both in code rather than in a comment.
+        Each script loops over a frozen list, so pinning it takes linked
+        assertions: the uninstall call must pass the iterator, and its loop
+        must take exactly the two earlier ids -- both in code, not comments.
         Checking the two substrings independently over the whole file let
-        install.ps1's id be mutated to `mlizaso.claude-usage-WRONG-ID`, or to
-        `mlizaso.claude-usage` (which would make the script uninstall the very
+        install.ps1's id be mutated to `mlizaso.codex-claude-usage-WRONG-ID`, or to
+        `mlizaso.codex-claude-usage` (which would make the script uninstall the very
         extension it is about to install, reinstating the defect on Windows),
         with the whole module staying green.
 
@@ -1118,15 +1178,17 @@ class TestLocalInstallersRetireTheSupersededExtensionId(unittest.TestCase):
         executed, and this static test is the half that still runs where
         `pwsh` is absent.
         """
-        for name, body, strip, var, assignment, assign_prefix, invoker in (
+        for name, body, strip, var, assignment, assign_prefix, loop, invoker in (
             ("install.sh", self.shell_installer, _bash_code_lines,
              "$legacy_extension_id",
-             'legacy_extension_id="%s"' % LEGACY_EXTENSION_ID,
-             "legacy_extension_id=", '"$code_cli"'),
+             "for legacy_extension_id in %s; do" % " ".join(LEGACY_EXTENSION_IDS),
+             "for legacy_extension_id in", None, '"$code_cli"'),
             ("install.ps1", self.powershell_installer, _powershell_code_lines,
              "$LegacyExtensionId",
-             '$LegacyExtensionId = "%s"' % LEGACY_EXTENSION_ID,
-             "$LegacyExtensionId =", "& $CodeCli"),
+             '$LegacyExtensionIds = @("%s", "%s")' % LEGACY_EXTENSION_IDS,
+             "$LegacyExtensionIds =",
+             "foreach ($LegacyExtensionId in $LegacyExtensionIds) {",
+             "& $CodeCli"),
         ):
             with self.subTest(installer=name):
                 # RAW, and fail-closed: see the docstring. Both tokens occur
@@ -1135,20 +1197,22 @@ class TestLocalInstallersRetireTheSupersededExtensionId(unittest.TestCase):
                 # and uses of the variable carry no `=`.
                 self.assertEqual(
                     body.count("--uninstall-extension"), 1,
-                    "%s should uninstall exactly once; a second call anywhere "
+                    "%s should have one uninstall loop body; a second call anywhere "
                     "in the file, however it is dressed up, is a second "
                     "removal" % name)
                 self.assertEqual(
                     body.count(assign_prefix), 1,
-                    "%s assigns %s more than once; the last one before the "
-                    "call decides which id is removed, and this test cannot "
-                    "adjudicate that without lexing the language" % (name, var))
+                    "%s must define the legacy id list exactly once" % name)
+                self.assertNotIn(
+                    "legacy_extension_id=" if name == "install.sh"
+                    else "$LegacyExtensionId =", body,
+                    "%s must not replace the iterator with another id" % name)
 
                 code = strip(body)
                 calls = [l for l in code if "--uninstall-extension" in l]
                 self.assertEqual(
                     len(calls), 1,
-                    "%s should uninstall the legacy id exactly once, in code, "
+                    "%s should have one uninstall loop body in code, "
                     "not in a comment: %r" % (name, calls))
                 self.assertIn(
                     var, calls[0],
@@ -1163,10 +1227,12 @@ class TestLocalInstallersRetireTheSupersededExtensionId(unittest.TestCase):
                     "invoker is merely mentioned -- in a string, in a "
                     "Write-Output, or inside some other construct -- rather "
                     "than run: %r" % (name, invoker, calls[0]))
-                self.assertTrue(
-                    any(assignment in l for l in code),
-                    "%s never assigns %s in code; the id it removes is "
-                    "whatever that variable happens to hold" % (name, var))
+                self.assertIn(
+                    assignment, code,
+                    "%s must iterate over exactly the two old ids in code" % name)
+                if loop is not None:
+                    self.assertIn(loop, code)
+                    self.assertEqual(body.count(loop), 1)
 
     def test_the_harness_refuses_a_find_code_cli_it_cannot_sandbox(self):
         """Non-vacuity for the ordering guard `_run_install_sh` runs first.
@@ -1289,50 +1355,21 @@ class TestLocalInstallersRetireTheSupersededExtensionId(unittest.TestCase):
         extension is not installed -- the common case for a new user. The
         script must still reach --install-extension and exit 0.
 
-        The exactly-one check on the log is the lexer-independent half of the
-        legacy-id guard, for the one installer that can be executed here. Its
+        The exact-removal check on the log is the lexer-independent half of the
+        legacy-id guard. Its
         three original assertions are all monotone `assertIn`s, so this
         harness watched a mutated install.sh uninstall the extension it had
         just installed and passed -- the extra call was right there in the
         stub log. Counting it costs nothing, because the log is already
         captured.
         """
-        for uninstall_exit, expect_notice in ((1, False), (0, True)):
-            with self.subTest(uninstall_exit=uninstall_exit):
-                completed, log = self._run_install_sh(uninstall_exit)
-                self.assertEqual(
-                    completed.returncode,
-                    0,
-                    f"install.sh exited {completed.returncode}: "
-                    f"{completed.stdout}{completed.stderr}",
-                )
-                self.assertIn(
-                    f"--uninstall-extension {LEGACY_EXTENSION_ID}",
-                    log,
-                    "install.sh never asked to remove the superseded id",
-                )
-                self.assertIn(
-                    "--install-extension",
-                    log,
-                    "install.sh did not reach the install step",
-                )
-                self.assertEqual(
-                    expect_notice,
-                    "Removed the superseded extension" in completed.stdout,
-                    "the removal notice must follow the uninstall's exit code",
-                )
-                uninstalls = [
-                    line for line in log.splitlines()
-                    if "--uninstall-extension" in line
-                ]
-                self.assertEqual(
-                    [f"--uninstall-extension {LEGACY_EXTENSION_ID}"],
-                    uninstalls,
-                    "install.sh must ask the CLI to remove the superseded id "
-                    "exactly once and nothing else: %r" % (uninstalls,),
-                )
+        for uninstall_exits in ((1, 1), (0, 0), (1, 0), (0, 1)):
+            with self.subTest(uninstall_exits=uninstall_exits):
+                completed, log = self._run_install_sh(uninstall_exits)
+                self._assert_retirement_result(
+                    "install.sh", completed, log, uninstall_exits)
 
-    def _run_install_sh(self, uninstall_exit):
+    def _run_install_sh(self, uninstall_exits):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
             log = tmp / "code-calls.log"
@@ -1372,16 +1409,11 @@ class TestLocalInstallersRetireTheSupersededExtensionId(unittest.TestCase):
             for name in names:
                 stub = tmp / name
                 stub.write_text(
-                    "#!/bin/sh\n"
-                    'printf "%s\\n" "$*" >> "$STUB_LOG"\n'
-                    'case "$1" in\n'
-                    f"  --uninstall-extension) exit {uninstall_exit} ;;\n"
-                    "esac\n"
-                    "exit 0\n",
+                    self._code_cli_fixture(uninstall_exits),
                     encoding="utf-8",
                 )
                 stub.chmod(0o755)
-            vsix = tmp / "claude-usage-0.0.0.vsix"
+            vsix = tmp / "codex-claude-usage-0.0.0.vsix"
             vsix.write_bytes(b"not a real vsix")
 
             env = dict(os.environ)
@@ -1393,6 +1425,7 @@ class TestLocalInstallersRetireTheSupersededExtensionId(unittest.TestCase):
                 text=True,
                 encoding="utf-8",
                 env=env,
+                timeout=20,
             )
             return completed, log.read_text(encoding="utf-8") if log.exists() else ""
 
@@ -1526,7 +1559,7 @@ class TestLocalInstallersRetireTheSupersededExtensionId(unittest.TestCase):
         landed before the run (a reviewer in the round that produced this test
         published green results from a regex that silently matched nothing):
 
-          pristine                       -> 1 uninstall, of the legacy id
+          pristine before this rename    -> 1 uninstall, of the legacy id
           the whole removal in an uncalled `function Remove-Legacy {}`
                                          -> 0 uninstalls   <- lexically invisible
           a later `$LegacyExtensionId = "mlizaso.claude-usage"`
@@ -1566,39 +1599,16 @@ class TestLocalInstallersRetireTheSupersededExtensionId(unittest.TestCase):
         wrong because `tests.yml` has FOUR non-windows legs, and any bare leg
         count is falsified the day a Python version is added.
         """
-        for uninstall_exit, expect_notice in ((1, False), (0, True)):
-            with self.subTest(uninstall_exit=uninstall_exit):
-                completed, log = self._run_install_ps1(uninstall_exit)
-                self.assertEqual(
-                    completed.returncode,
-                    0,
-                    f"install.ps1 exited {completed.returncode}: "
-                    f"{completed.stdout}{completed.stderr}",
-                )
-                self.assertIn(
-                    "--install-extension",
-                    log,
-                    "install.ps1 did not reach the install step",
-                )
-                self.assertEqual(
-                    expect_notice,
-                    "Removed the superseded extension" in completed.stdout,
-                    "the removal notice must follow the uninstall's exit code",
-                )
-                uninstalls = [
-                    line for line in log.splitlines()
-                    if "--uninstall-extension" in line
-                ]
-                self.assertEqual(
-                    [f"--uninstall-extension {LEGACY_EXTENSION_ID}"],
-                    uninstalls,
-                    "install.ps1 must ask the CLI to remove the superseded id "
-                    "exactly once and nothing else -- this is the assertion "
-                    "that catches an unreachable or misdirected removal, "
-                    "which no lexical rule can: %r" % (uninstalls,),
-                )
+        for native_errors in (False, True):
+            for uninstall_exits in ((1, 1), (0, 0), (1, 0), (0, 1)):
+                with self.subTest(
+                        native_errors=native_errors, uninstall_exits=uninstall_exits):
+                    completed, log = self._run_install_ps1(
+                        uninstall_exits, native_errors)
+                    self._assert_retirement_result(
+                        "install.ps1", completed, log, uninstall_exits)
 
-    def _run_install_ps1(self, uninstall_exit):
+    def _run_install_ps1(self, uninstall_exits, native_errors):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
             log = tmp / "code-calls.log"
@@ -1625,16 +1635,11 @@ class TestLocalInstallersRetireTheSupersededExtensionId(unittest.TestCase):
             for name in names:
                 stub = tmp / name
                 stub.write_text(
-                    "#!/bin/sh\n"
-                    'printf "%s\\n" "$*" >> "$STUB_LOG"\n'
-                    "case \"$1\" in\n"
-                    f"  --uninstall-extension) exit {uninstall_exit} ;;\n"
-                    "esac\n"
-                    "exit 0\n",
+                    self._code_cli_fixture(uninstall_exits),
                     encoding="utf-8",
                 )
                 stub.chmod(0o755)
-            vsix = tmp / "claude-usage-0.0.0.vsix"
+            vsix = tmp / "codex-claude-usage-0.0.0.vsix"
             vsix.write_bytes(b"not a real vsix")
 
             env = dict(os.environ)
@@ -1647,16 +1652,20 @@ class TestLocalInstallersRetireTheSupersededExtensionId(unittest.TestCase):
             # repository asks for and nothing tells the reader about.
             env["POWERSHELL_TELEMETRY_OPTOUT"] = "1"
             env["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1"
+            env["STUB_INSTALLER"] = str(self.scripts_dir / "install.ps1")
+            env["STUB_VSIX"] = str(vsix)
             completed = subprocess.run(
                 [
-                    "pwsh", "-NoProfile", "-NonInteractive",
-                    "-File", str(self.scripts_dir / "install.ps1"),
-                    "-Vsix", str(vsix),
+                    "pwsh", "-NoProfile", "-NonInteractive", "-Command",
+                    "$PSNativeCommandUseErrorActionPreference = "
+                    + ("$true; " if native_errors else "$false; ")
+                    + "& $env:STUB_INSTALLER -Vsix $env:STUB_VSIX",
                 ],
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
                 env=env,
+                timeout=20,
             )
             return completed, log.read_text(encoding="utf-8") if log.exists() else ""
 
@@ -1667,25 +1676,29 @@ class TestLocalInstallersRetireTheSupersededExtensionId(unittest.TestCase):
 )
 class TestPowerShellInstallerFailures(unittest.TestCase):
     STAGES = ["ci", "signatures", "audit", "package", "name", "version",
-              "uninstall", "install"]
+              *("uninstall:" + extension_id for extension_id in LEGACY_EXTENSION_IDS),
+              "install"]
 
     def test_required_command_failure_stops_before_later_steps(self):
-        for stage in self.STAGES:
-            if stage == "uninstall":
-                continue  # Removing an absent legacy extension is best-effort.
-            with self.subTest(stage=stage):
-                completed, calls = self._run_installer(stage)
-                self.assertNotEqual(completed.returncode, 0, completed.stdout)
-                self.assertNotIn("Done. Reload VS Code", completed.stdout)
-                self.assertEqual(calls, self.STAGES[:self.STAGES.index(stage) + 1])
+        for native_errors in (False, True):
+            for stage in self.STAGES:
+                if stage.startswith("uninstall:"):
+                    continue  # Removing an absent earlier extension is best-effort.
+                with self.subTest(stage=stage, native_errors=native_errors):
+                    completed, calls = self._run_installer(stage, native_errors)
+                    self.assertNotEqual(completed.returncode, 0, completed.stdout)
+                    self.assertNotIn("Done. Reload VS Code", completed.stdout)
+                    self.assertEqual(calls, self.STAGES[:self.STAGES.index(stage) + 1])
 
     def test_success_still_installs_after_a_missing_legacy_extension(self):
-        completed, calls = self._run_installer("")
-        self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertIn("Done. Reload VS Code", completed.stdout)
-        self.assertEqual(calls, self.STAGES)
+        for native_errors in (False, True):
+            with self.subTest(native_errors=native_errors):
+                completed, calls = self._run_installer("", native_errors)
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertIn("Done. Reload VS Code", completed.stdout)
+                self.assertEqual(calls, self.STAGES)
 
-    def _run_installer(self, failed_stage):
+    def _run_installer(self, failed_stage, native_errors):
         source = (ROOT / "vscode-extension/scripts/install.ps1").read_text(
             encoding="utf-8")
         code_names = _code_cli_candidate_names(source)
@@ -1724,10 +1737,10 @@ class TestPowerShellInstallerFailures(unittest.TestCase):
             }
             code_fixture = (
                 'case "$1" in\n'
-                '  --uninstall-extension) stage=uninstall ;;\n'
+                '  --uninstall-extension) stage="uninstall:$2" ;;\n'
                 '  --install-extension) stage=install ;;\n'
                 '  *) exit 98 ;;\nesac\n' + check
-                + '[ "$stage" != uninstall ] || exit 1\n'
+                + 'case "$stage" in uninstall:*) exit 1 ;; esac\n'
             )
             fixtures.update({name: code_fixture for name in code_names})
             for name, body in fixtures.items():
@@ -1745,8 +1758,9 @@ class TestPowerShellInstallerFailures(unittest.TestCase):
             })
             completed = subprocess.run(
                 ["pwsh", "-NoProfile", "-NonInteractive", "-Command",
-                 "$PSNativeCommandUseErrorActionPreference = $false; "
-                 "& $env:STUB_INSTALLER"],
+                 "$PSNativeCommandUseErrorActionPreference = "
+                 + ("$true; " if native_errors else "$false; ")
+                 + "& $env:STUB_INSTALLER"],
                 capture_output=True, text=True, encoding="utf-8", env=env,
                 timeout=20,
             )
@@ -2427,9 +2441,9 @@ class TestPythonDistributionIdentity(unittest.TestCase):
         project = tomllib.loads(
             (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         )["project"]
-        self.assertEqual(project["name"], "claude-usage")
+        self.assertEqual(project["name"], "codex-claude-usage")
         self.assertEqual(
-            project["scripts"], {"claude-usage": "claude_usage.cli:main"})
+            project["scripts"], {"codex-claude-usage": "codex_claude_usage.cli:main"})
 
 
 class TestVendoredAssetPinParity(unittest.TestCase):
@@ -2538,16 +2552,16 @@ class TestDockerSecurityTopology(unittest.TestCase):
         # NAME only, never `NAME=value`: see the sibling test below, which is
         # what actually guards this. The key here just pins that the variable is
         # still handed to the container at all.
-        "--env CLAUDE_USAGE_API_TOKEN": 1,
-        "--env CLAUDE_USAGE_SUPPRESS_AUTH_URL=1": 1,
+        "--env CODEX_CLAUDE_USAGE_API_TOKEN": 1,
+        "--env CODEX_CLAUDE_USAGE_SUPPRESS_AUTH_URL=1": 1,
         "/#token=${API_TOKEN}": 1,
-        "dst=/home/claudeusage/.claude/projects,readonly": 1,
+        "dst=/home/codexclaudeusage/.claude/projects,readonly": 1,
         # No leading space: the stripper hands back the statement stripped of
         # its indentation, and the space this key used to carry was only ever
         # standing in for "a flag, not a suffix of a longer one".
         '--env PORT': 1,
-        '--env CLAUDE_USAGE_INVOKED_AS': 1,
-        '--env CLAUDE_USAGE_DOCKER_CONTAINER': 1,
+        '--env CODEX_CLAUDE_USAGE_INVOKED_AS': 1,
+        '--env CODEX_CLAUDE_USAGE_DOCKER_CONTAINER': 1,
         '-p "127.0.0.1:$PORT:$PORT"': 1,
         '--listen-port "$PORT"': 1,
         '--target-port "$PORT"': 1,
@@ -2556,7 +2570,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
     def test_the_bearer_token_never_travels_in_a_command_line(self):
         """argv is world-readable on Linux; the launcher's environment is not.
 
-        `--env CLAUDE_USAGE_API_TOKEN="$API_TOKEN"` put the whole 64-hex bearer
+        `--env CODEX_CLAUDE_USAGE_API_TOKEN="$API_TOKEN"` put the whole 64-hex bearer
         token in the `docker run` process's argv, and /proc/<pid>/cmdline is
         mode 444 with no `hidepid` on mainstream distributions -- so any other
         local user sweeping the process table while the launcher runs captured
@@ -2606,7 +2620,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
     def test_thresholds_live_on_the_writable_data_mount(self):
         dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
         self.assertIn(
-            "ENV CLAUDE_USAGE_THRESHOLDS=/data/limit-thresholds.json",
+            "ENV CODEX_CLAUDE_USAGE_THRESHOLDS=/data/limit-thresholds.json",
             dockerfile,
             "the read-only image acknowledged threshold writes but had no "
             "writable persistence path",
@@ -2641,7 +2655,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
         script = ROOT / "scripts" / "run-docker.sh"
         for port in ("80", "1023", "01024", "077777", "00099999", "65536"):
             with self.subTest(port=port):
-                env = dict(os.environ, CLAUDE_USAGE_DOCKER_PORT=port)
+                env = dict(os.environ, CODEX_CLAUDE_USAGE_DOCKER_PORT=port)
                 got = subprocess.run(
                     ["bash", str(script)], cwd=ROOT, env=env,
                     capture_output=True, text=True, encoding="utf-8",
@@ -2685,7 +2699,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
                 os.environ,
                 PATH=f"{tmp}{os.pathsep}{os.environ['PATH']}",
                 CLAUDE_CONFIG_DIR=str(claude),
-                CLAUDE_USAGE_DOCKER_DATA_DIR=str(data),
+                CODEX_CLAUDE_USAGE_DOCKER_DATA_DIR=str(data),
                 DOCKER_TEST_LOG=str(docker_log),
             )
 
@@ -2703,10 +2717,10 @@ class TestDockerSecurityTopology(unittest.TestCase):
                 cleanup,
                 [
                     'container inspect --format {{.Id}} {{ index .Config.Labels '
-                    '"com.claude-usage.launch" }} claude-usage-proxy',
+                    '"com.codex-claude-usage.launch" }} codex-claude-usage-proxy',
                     "rm --force app-id",
-                    "network rm claude-usage-loopback-id",
-                    "network rm claude-usage-private-id",
+                    "network rm codex-claude-usage-loopback-id",
+                    "network rm codex-claude-usage-private-id",
                 ],
             )
 
@@ -2739,7 +2753,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
                 "  'network create')\n"
                 "    for arg in \"$@\"; do\n"
                 "      case \"$arg\" in\n"
-                "        com.claude-usage.launch=*)\n"
+                "        com.codex-claude-usage.launch=*)\n"
                 "          printf '%s\\n' \"${arg#*=}\" > \"$DOCKER_TEST_STATE\" ;;\n"
                 "      esac\n"
                 "    done\n"
@@ -2758,7 +2772,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
                 os.environ,
                 PATH=f"{tmp}{os.pathsep}{os.environ['PATH']}",
                 CLAUDE_CONFIG_DIR=str(claude),
-                CLAUDE_USAGE_DOCKER_DATA_DIR=str(tmp / "data"),
+                CODEX_CLAUDE_USAGE_DOCKER_DATA_DIR=str(tmp / "data"),
                 DOCKER_TEST_LOG=str(docker_log),
                 DOCKER_TEST_STATE=str(docker_state),
                 DOCKER_TEST_LAUNCHER_PID=str(launcher_pid),
@@ -2781,7 +2795,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
                 calls[created + 1:],
                 [
                     'network inspect --format {{.Id}} {{ index .Labels '
-                    '"com.claude-usage.launch" }} claude-usage-private',
+                    '"com.codex-claude-usage.launch" }} codex-claude-usage-private',
                     "network rm interrupted-network-id",
                 ],
             )
@@ -2814,7 +2828,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
                 os.environ,
                 PATH=f"{tmp}{os.pathsep}{os.environ['PATH']}",
                 CLAUDE_CONFIG_DIR=str(claude),
-                CLAUDE_USAGE_DOCKER_DATA_DIR=str(tmp / "data"),
+                CODEX_CLAUDE_USAGE_DOCKER_DATA_DIR=str(tmp / "data"),
                 DOCKER_TEST_LOG=str(docker_log),
             )
 
@@ -2828,7 +2842,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
             calls = docker_log.read_text(encoding="utf-8").splitlines()
             self.assertIn(
                 'container inspect --format {{.Id}} {{ index .Config.Labels '
-                '"com.claude-usage.managed" }} claude-usage',
+                '"com.codex-claude-usage.managed" }} codex-claude-usage',
                 calls,
             )
 
@@ -2863,7 +2877,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
                 os.environ,
                 PATH=f"{tmp}{os.pathsep}{os.environ['PATH']}",
                 CLAUDE_CONFIG_DIR=str(claude),
-                CLAUDE_USAGE_DOCKER_DATA_DIR=str(tmp / "data"),
+                CODEX_CLAUDE_USAGE_DOCKER_DATA_DIR=str(tmp / "data"),
                 DOCKER_TEST_LOG=str(docker_log),
             )
 
@@ -2875,7 +2889,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
             self.assertEqual(got.returncode, 73, got.stderr)
             calls = docker_log.read_text(encoding="utf-8").splitlines()
             self.assertIn("rm --force prior-proxy-id", calls)
-            self.assertNotIn("rm --force claude-usage-proxy", calls)
+            self.assertNotIn("rm --force codex-claude-usage-proxy", calls)
 
     @unittest.skipUnless(os.name == "posix", "Docker shell launcher needs a POSIX runtime")
     def test_reused_networks_and_proxy_target_use_launch_identity(self):
@@ -2897,7 +2911,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
                 "    if [[ \"${3-}\" != --format ]]; then exit 0; fi\n"
                 "    format=$4; target=${!#}\n"
                 "    private=false\n"
-                "    [[ \"$target\" == claude-usage-private || \"$target\" == private-existing-id ]] && private=true\n"
+                "    [[ \"$target\" == codex-claude-usage-private || \"$target\" == private-existing-id ]] && private=true\n"
                 "    case \"$format\" in\n"
                 "      *'.Id'*) [[ \"$private\" == true ]] && echo private-existing-id || echo proxy-existing-id ;;\n"
                 "      *'.Driver'*) echo bridge ;;\n"
@@ -2919,7 +2933,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
                 os.environ,
                 PATH=f"{tmp}{os.pathsep}{os.environ['PATH']}",
                 CLAUDE_CONFIG_DIR=str(claude),
-                CLAUDE_USAGE_DOCKER_DATA_DIR=str(tmp / "data"),
+                CODEX_CLAUDE_USAGE_DOCKER_DATA_DIR=str(tmp / "data"),
                 DOCKER_TEST_LOG=str(docker_log),
             )
 
@@ -2941,7 +2955,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
             proxy_target = create_args[create_args.index("--target-host") + 1]
             self.assertRegex(app_alias, r"^app-[0-9a-f]{48}$")
             self.assertEqual(proxy_target, app_alias)
-            self.assertNotEqual(proxy_target, "claude-usage")
+            self.assertNotEqual(proxy_target, "codex-claude-usage")
 
     @unittest.skipUnless(os.name == "posix", "Docker shell launcher needs a POSIX runtime")
     def test_failed_launch_uses_ids_not_names_that_can_be_replaced(self):
@@ -2971,7 +2985,7 @@ class TestDockerSecurityTopology(unittest.TestCase):
                 os.environ,
                 PATH=f"{tmp}{os.pathsep}{os.environ['PATH']}",
                 CLAUDE_CONFIG_DIR=str(claude),
-                CLAUDE_USAGE_DOCKER_DATA_DIR=str(tmp / "data"),
+                CODEX_CLAUDE_USAGE_DOCKER_DATA_DIR=str(tmp / "data"),
                 DOCKER_TEST_LOG=str(docker_log),
             )
 
@@ -2989,8 +3003,8 @@ class TestDockerSecurityTopology(unittest.TestCase):
                 [
                     "rm --force proxy-id",
                     "rm --force app-id",
-                    "network rm claude-usage-loopback-id",
-                    "network rm claude-usage-private-id",
+                    "network rm codex-claude-usage-loopback-id",
+                    "network rm codex-claude-usage-private-id",
                 ],
             )
 
@@ -3017,8 +3031,8 @@ class TestDockerSecurityTopology(unittest.TestCase):
         admitted = {
             line for line in dockerignore.splitlines() if line.startswith("!")
         }
-        for path in ("claude_usage/cli.py", "claude_usage/scanner.py",
-                     "claude_usage/dashboard.py", "proxy.py",
+        for path in ("codex_claude_usage/cli.py", "codex_claude_usage/scanner.py",
+                     "codex_claude_usage/dashboard.py", "proxy.py",
                      "vendor/chart.umd.js"):
             self.assertIn("!" + path, admitted)
         for bare in ("!vendor", "!vendor/"):

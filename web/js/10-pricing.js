@@ -1,10 +1,10 @@
-// ── Pricing (generated from claude_usage/pricing.py) ───────────────────────
+// ── Pricing (generated from codex_claude_usage/pricing.py) ───────────────────────
 // cache_write is the short-lived write bucket; cache_write_1h is its one-hour
 // subset. Anthropic publishes distinct 5-minute/1-hour rates. OpenAI publishes
 // one write bucket, so its two schema fields intentionally share a rate.
 // BEGIN GENERATED PRICING DATA. Run scripts/generate-pricing-assets.py.
 const PRICING = {
-  // Generated from claude_usage.pricing.PRICING; do not edit by hand.
+  // Generated from codex_claude_usage.pricing.PRICING; do not edit by hand.
   'claude-fable-5-1': { input: 10, output: 50, cache_write: 12.5, cache_read: 0.25, cache_write_1h: 20 },
   'claude-mythos-5-1': { input: 10, output: 50, cache_write: 12.5, cache_read: 0.25, cache_write_1h: 20 },
   'claude-fable-5': { input: 10, output: 50, cache_write: 12.5, cache_read: 1, cache_write_1h: 20 },
@@ -43,7 +43,7 @@ const PRICING = {
 // makes every string an ordinary own key.
 Object.setPrototypeOf(PRICING, null);
 
-// Generated from claude_usage.pricing.RATE_POLICIES; do not edit by hand.
+// Generated from codex_claude_usage.pricing.RATE_POLICIES; do not edit by hand.
 const RATE_POLICIES = Object.freeze({
   "gpt-5.6-sol": Object.freeze({
     start: "2026-08-22",
@@ -119,7 +119,7 @@ function isLongContext(model, inp, cacheRead, cacheCreation) {
 // sets drift.
 //
 // `ESTIMATED_RATE_MODELS` is generated as `let` for exactly one reason: a rate
-// the user supplied through CLAUDE_USAGE_RATES is no longer our estimate, and
+// the user supplied through CODEX_CLAUDE_USAGE_RATES is no longer our estimate, and
 // dropping the label means rebuilding this list. The generated array itself
 // stays frozen; see applyRateOverrides at the foot of this file. RATE_FIELDS is
 // generated from the Python override contract for the same reason.
@@ -289,7 +289,7 @@ function rowCost(row) {
 }
 
 // ── Rates the user supplied ────────────────────────────────────────────────
-// CLAUDE_USAGE_RATES points at a JSON file of per-model rates. The server reads
+// CODEX_CLAUDE_USAGE_RATES points at a JSON file of per-model rates. The server reads
 // and resolves it once (pricing.load_rate_overrides) and injects the models it
 // applied, already resolved to five fields, on APP_CONFIG. This page bills from
 // its own copy of the table, so while the override stopped at the Python side

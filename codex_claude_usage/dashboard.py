@@ -43,7 +43,7 @@ from .db import connect_existing_db, database_admission
 from .safejson import safe_dashboard_value
 from .safefile import open_regular_file_descriptor, read_bounded_regular_file
 
-DB_PATH = Path(os.environ.get("CLAUDE_USAGE_DB", Path.home() / ".claude" / "usage.db"))
+DB_PATH = Path(os.environ.get("CODEX_CLAUDE_USAGE_DB", Path.home() / ".claude" / "usage.db"))
 
 # Transcript roots the process was launched with, or None for "whatever the
 # scanner defaults to". `cli.py dashboard --projects-dir X` sets this so the
@@ -61,21 +61,21 @@ PROJECTS_DIRS = None
 SURFACE = "web"
 
 LOCAL_TOKEN_RE = re.compile(r"[A-Za-z0-9_-]{32,128}")
-_configured_api_token = os.environ.get("CLAUDE_USAGE_API_TOKEN", "")
+_configured_api_token = os.environ.get("CODEX_CLAUDE_USAGE_API_TOKEN", "")
 API_TOKEN = (
     _configured_api_token
     if LOCAL_TOKEN_RE.fullmatch(_configured_api_token)
     else secrets.token_urlsafe(32)
 )
-API_TOKEN_HEADER = "X-Claude-Usage-Token"
-RESCAN_PROOF_HEADER = "X-Claude-Usage-Rescan-Proof"
-RESCAN_CHALLENGE_HEADER = "X-Claude-Usage-Rescan-Challenge"
+API_TOKEN_HEADER = "X-Codex-Claude-Usage-Token"
+RESCAN_PROOF_HEADER = "X-Codex-Claude-Usage-Rescan-Proof"
+RESCAN_CHALLENGE_HEADER = "X-Codex-Claude-Usage-Rescan-Challenge"
 # A separate, per-process secret used only to prove that a stale recovery URL
 # still names the process that wrote it. It is never sent over HTTP: liveness
 # uses a nonce/HMAC challenge, so a process that later reclaims the port cannot
 # capture the API bearer or replay an earlier answer.
 LIVENESS_TOKEN = secrets.token_urlsafe(32)
-_health_token = os.environ.get("CLAUDE_USAGE_HEALTH_TOKEN", "")
+_health_token = os.environ.get("CODEX_CLAUDE_USAGE_HEALTH_TOKEN", "")
 HEALTH_PROOF_SECRET = (
     _health_token
     if LOCAL_TOKEN_RE.fullmatch(_health_token)
@@ -85,8 +85,8 @@ VALID_SURFACES = frozenset(("web", "vscode"))
 # The assistants whose usage this can show. A `?source=` outside this set
 # is ignored rather than rejected, so an old link still renders everything.
 KNOWN_SOURCES = frozenset(("claude", "codex"))
-CONTAINER_BIND_ENV = "CLAUDE_USAGE_ALLOW_CONTAINER_BIND"
-SUPPRESS_AUTH_URL_ENV = "CLAUDE_USAGE_SUPPRESS_AUTH_URL"
+CONTAINER_BIND_ENV = "CODEX_CLAUDE_USAGE_ALLOW_CONTAINER_BIND"
+SUPPRESS_AUTH_URL_ENV = "CODEX_CLAUDE_USAGE_SUPPRESS_AUTH_URL"
 CHART_JS_SHA256 = "ecc3cd1eeb8c34d2178e3f59fd63ec5a3d84358c11730af0b9958dc886d7652a"
 MAX_HTTP_CONNECTIONS = 32
 HTTP_SOCKET_TIMEOUT_SECONDS = 15
@@ -643,7 +643,7 @@ def _liveness_proof(challenge, api_token=None, liveness_token=None):
 def _health_proof(challenge, health_secret=None):
     """HMAC proof for the extension's one-shot readiness challenge."""
     secret = HEALTH_PROOF_SECRET if health_secret is None else health_secret
-    message = b"claude-usage-health\0" + challenge.encode("ascii")
+    message = b"codex-claude-usage-health\0" + challenge.encode("ascii")
     return hmac.new(secret.encode("ascii"), message, hashlib.sha256).hexdigest()
 
 
@@ -656,7 +656,7 @@ def _rescan_proof(challenge, health_secret=None):
     token used by the embedded browser.
     """
     secret = HEALTH_PROOF_SECRET if health_secret is None else health_secret
-    message = b"claude-usage-rescan\0POST /api/rescan\0" + challenge.encode("ascii")
+    message = b"codex-claude-usage-rescan\0POST /api/rescan\0" + challenge.encode("ascii")
     return hmac.new(secret.encode("ascii"), message, hashlib.sha256).hexdigest()
 
 
@@ -814,7 +814,7 @@ def asset_roots():
 
     Each root holds `web/` and `vendor/`. The checkout, Homebrew's libexec, the
     Docker image and the .vsix all put those beside the Python sources; a
-    pip/uv install puts them under `<data prefix>/share/claude-usage`.
+    pip/uv install puts them under `<data prefix>/share/codex-claude-usage`.
 
     `sys.prefix` is that data prefix for a venv — which is what `uv tool
     install` and `pipx` build — and for a plain `pip install`, but *not* for
@@ -967,7 +967,7 @@ def find_icon_file():
     page that asks for it. It used to be searched for in the *extension's*
     `resources/` alone, which only two of the five delivery surfaces carry:
     the checkout and the .vsix. Homebrew installs `libexec/{web,vendor}` and the
-    modules, pip installs `share/claude-usage/{web,vendor}`, and the Docker
+    modules, pip installs `share/codex-claude-usage/{web,vendor}`, and the Docker
     image copies `web` and `vendor` — none of the three ships
     `vscode-extension/` at all, so this route 404'd on all three while the page
     around it rendered. `web/app.css` masks `header .header-icon` with it
@@ -1060,7 +1060,7 @@ def find_chart_file():
 
 
 class DashboardHandler(LoopbackRequestHandlerMixin, BaseHTTPRequestHandler):
-    server_version = "ClaudeUsage"
+    server_version = "CodexClaudeUsage"
     sys_version = ""
 
     def log_message(self, format, *args):
@@ -1318,13 +1318,13 @@ class DashboardHandler(LoopbackRequestHandlerMixin, BaseHTTPRequestHandler):
                 self._send_json(400, {"error": "Invalid challenge"})
                 return
             self._send_json(200, {
-                "service": "claude-usage",
+                "service": "codex-claude-usage",
                 "proof": _liveness_proof(challenges[0]),
             })
 
         elif path == "/healthz":
             health = {
-                "service": "claude-usage",
+                "service": "codex-claude-usage",
                 "status": "ok",
                 "version": VERSION,
             }
@@ -1769,7 +1769,7 @@ def _port_answers_as_this_app(host, port, timeout=1.5):
             return None
         if not isinstance(body, dict):
             return None
-        return (body.get("service") == "claude-usage"
+        return (body.get("service") == "codex-claude-usage"
                 and body.get("status") == "ok")
 
     completed, answer = call_with_total_deadline(probe, timeout)
@@ -1859,7 +1859,7 @@ def port_in_use_lines(host, port):
         identified = True
         lines += [
             "",
-            "A claude-usage dashboard is already running on it, and its link still works:",
+            "A codex-claude-usage dashboard is already running on it, and its link still works:",
             "",
             f"  {invocation()} url --open     # reopen the one that is already running",
             "",
@@ -1869,7 +1869,7 @@ def port_in_use_lines(host, port):
         identified = True
         lines += [
             "",
-            "It is another claude-usage dashboard, but no saved link names it, so its API",
+            "It is another codex-claude-usage dashboard, but no saved link names it, so its API",
             "token cannot be recovered and the page it serves is unreachable. Stop it, then",
             "run this command again:",
         ]
@@ -2012,7 +2012,7 @@ def _background_scan():
         # `terminal_safe` escapes Cc, and a newline is Cc -- so an exception
         # carrying a multi-line remedy came out as one `\x0a`-run of a line.
         # `db.ForeignDatabaseError` is exactly that, and it is reachable from
-        # here: point `CLAUDE_USAGE_DB` at somebody else's SQLite file and this
+        # here: point `CODEX_CLAUDE_USAGE_DB` at somebody else's SQLite file and this
         # is the thread that finds out. Its text is already escaped field by
         # field by `db`, so it is printed as-is; everything else still goes
         # through `terminal_safe`, which is what an arbitrary exception string

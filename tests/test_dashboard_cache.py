@@ -7,8 +7,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from claude_usage import dashboard_cache as cache
-from claude_usage.db import get_db, init_db
+from codex_claude_usage import dashboard_cache as cache
+from codex_claude_usage.db import get_db, init_db
 
 
 class TestDashboardSnapshots(unittest.TestCase):

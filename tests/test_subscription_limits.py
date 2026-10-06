@@ -31,7 +31,7 @@ from unittest import mock
 import account
 import db
 import limits_core
-from claude_usage import safefile
+from codex_claude_usage import safefile
 import scanner
 from tests.test_dashboard_js import emit, requires_node, run_js
 
@@ -618,12 +618,12 @@ class TestScanIsNeverBrokenByTheConfig(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             projects = Path(tmp) / "projects"
             projects.mkdir()
-            os.environ["CLAUDE_USAGE_CONFIG"] = str(Path(tmp) / "absent.json")
+            os.environ["CODEX_CLAUDE_USAGE_CONFIG"] = str(Path(tmp) / "absent.json")
             try:
                 result = scanner.scan(projects_dir=projects,
                                       db_path=Path(tmp) / "usage.db", verbose=False)
             finally:
-                os.environ.pop("CLAUDE_USAGE_CONFIG", None)
+                os.environ.pop("CODEX_CLAUDE_USAGE_CONFIG", None)
             self.assertEqual(result["turns"], 0)
 
 

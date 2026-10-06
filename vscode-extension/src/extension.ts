@@ -14,7 +14,7 @@ import { trustedUserSetting } from "./trusted-config";
  * state) survives window reloads. Per-workspace so two
  * windows don't fight over one port.
  */
-const LAST_PORT_KEY = "claudeUsage.lastPort";
+const LAST_PORT_KEY = "codexClaudeUsage.lastPort";
 
 /**
  * Lifecycle owner for the extension. Held as a module-level singleton so
@@ -59,10 +59,10 @@ class Extension {
     context.subscriptions.push(
       this.output,
       vscode.window.registerWebviewViewProvider(DashboardSidebar.viewId, this.sidebar),
-      vscode.commands.registerCommand("claudeUsage.open", () => this.openDashboard()),
-      vscode.commands.registerCommand("claudeUsage.rescan", () => this.rescan()),
-      vscode.commands.registerCommand("claudeUsage.restart", () => this.restart()),
-      vscode.commands.registerCommand("claudeUsage.showLogs", () => this.output.show()),
+      vscode.commands.registerCommand("codexClaudeUsage.open", () => this.openDashboard()),
+      vscode.commands.registerCommand("codexClaudeUsage.rescan", () => this.rescan()),
+      vscode.commands.registerCommand("codexClaudeUsage.restart", () => this.restart()),
+      vscode.commands.registerCommand("codexClaudeUsage.showLogs", () => this.output.show()),
     );
   }
 
@@ -73,7 +73,7 @@ class Extension {
    */
   async openDashboard(): Promise<void> {
     if (this.disposed) return;
-    await vscode.commands.executeCommand("workbench.view.extension.claudeUsageSidebar");
+    await vscode.commands.executeCommand("workbench.view.extension.codexClaudeUsageSidebar");
     if (this.disposed) return;
 
     if (this.server && this.server.status === "ready") {
@@ -104,7 +104,7 @@ class Extension {
     // constructed" from "constructed, then failed".
     let manager: ServerManager | undefined;
     try {
-      const config = vscode.workspace.getConfiguration("claudeUsage");
+      const config = vscode.workspace.getConfiguration("codexClaudeUsage");
       const configuredPython = trustedUserSetting(config, "pythonPath", "");
       const configuredCli = trustedUserSetting(config, "cliPath", "");
       // Hardcoded to localhost. We previously exposed a `host` setting but
@@ -330,7 +330,7 @@ function startupFailureMessage(err: unknown): string {
  *
  * TWO causes, two texts, for the same reason `noPythonMessage` has two. The
  * single unbranched string this replaces was printed for both and could not
- * name the rejected path, so a user whose `claudeUsage.cliPath` was the cause
+ * name the rejected path, so a user whose `codexClaudeUsage.cliPath` was the cause
  * was not told which path had been refused, and a user who had never set it was
  * sent to inspect an empty setting.
  *
@@ -346,7 +346,7 @@ function startupFailureMessage(err: unknown): string {
 export function noInstallMessage(reason: InstallFailure): string {
   if (reason.cause === "configured-unusable") {
     return [
-      "Codex / Claude Usage cannot use the launcher named by your claudeUsage.cliPath setting:",
+      "Codex / Claude Usage cannot use the launcher named by your codexClaudeUsage.cliPath setting:",
       "",
       `    ${reason.configuredPath}`,
       "",
@@ -357,12 +357,12 @@ export function noInstallMessage(reason: InstallFailure): string {
       "Use Codex / Claude Usage: Show Logs to see what was tried.",
     ].join("\n");
   }
-  // Nothing to blame the user for: claudeUsage.cliPath is empty (that is what
+  // Nothing to blame the user for: codexClaudeUsage.cliPath is empty (that is what
   // this arm MEANS), so the bundled python/cli.py that ships inside the .vsix
   // is simply not there.
   return [
     "Could not find the Codex / Claude Usage sources bundled in this private extension.",
-    "Your claudeUsage.cliPath setting is empty, so this is not a settings problem —",
+    "Your codexClaudeUsage.cliPath setting is empty, so this is not a settings problem —",
     "the bundled python/cli.py is missing. Reinstalling the extension restores it.",
     "",
     "Use Codex / Claude Usage: Show Logs to see what was tried.",
@@ -371,7 +371,7 @@ export function noInstallMessage(reason: InstallFailure): string {
 
 /**
  * Panel + output-channel wording for the case that produces no error at all:
- * `claudeUsage.cliPath` was rejected, a bundled copy existed, and the dashboard
+ * `codexClaudeUsage.cliPath` was rejected, a bundled copy existed, and the dashboard
  * is starting on that instead.
  *
  * It names both paths on purpose. The failure this exists to end is a user
@@ -380,7 +380,7 @@ export function noInstallMessage(reason: InstallFailure): string {
  */
 export function ignoredCliPathMessage(configuredPath: string, cliPy: string): string {
   return [
-    "Codex / Claude Usage ignored your claudeUsage.cliPath setting — it is not an absolute path to an existing file, or to a directory that contains cli.py:",
+    "Codex / Claude Usage ignored your codexClaudeUsage.cliPath setting — it is not an absolute path to an existing file, or to a directory that contains cli.py:",
     "",
     `    ${configuredPath}`,
     "",
@@ -396,14 +396,14 @@ export function ignoredCliPathMessage(configuredPath: string, cliPy: string): st
  * the same moment and must not describe different causes.
  */
 export function ignoredCliPathDialogMessage(configuredPath: string): string {
-  return `Codex / Claude Usage ignored claudeUsage.cliPath (${configuredPath}) and started its own bundled cli.py instead. Run Codex / Claude Usage: Show Logs for details.`;
+  return `Codex / Claude Usage ignored codexClaudeUsage.cliPath (${configuredPath}) and started its own bundled cli.py instead. Run Codex / Claude Usage: Show Logs for details.`;
 }
 
 /**
  * Friendly "no Python" message for the panel and the output channel.
  *
  * TWO causes, two texts. The locator fails closed on a non-empty
- * `claudeUsage.pythonPath` — it never falls back to PATH — so for
+ * `codexClaudeUsage.pythonPath` — it never falls back to PATH — so for
  * `configured-unusable` the PATH was not searched at all and every sentence
  * about it is false. This function used to have only the `not-on-path` arm and
  * was printed for both, so a user with a stale setting and a working `python3`
@@ -419,7 +419,7 @@ export function noPythonMessage(
 ): string {
   if (reason.kind === "configured-unusable") {
     return [
-      "Codex / Claude Usage cannot use the Python interpreter named by your claudeUsage.pythonPath setting:",
+      "Codex / Claude Usage cannot use the Python interpreter named by your codexClaudeUsage.pythonPath setting:",
       "",
       `    ${reason.configuredPath}`,
       "",
@@ -443,7 +443,7 @@ export function noPythonMessage(
     installHint,
     "",
     "After installing, reload this VS Code window (Cmd/Ctrl+Shift+P → Developer: Reload Window).",
-    "If Python is already installed in a non-standard location, set claudeUsage.pythonPath in settings.",
+    "If Python is already installed in a non-standard location, set codexClaudeUsage.pythonPath in settings.",
   ].join("\n");
 }
 
@@ -458,7 +458,7 @@ export function noPythonMessage(
  */
 export function noPythonDialogMessage(reason: PythonFailure): string {
   return reason.kind === "configured-unusable"
-    ? "Codex / Claude Usage cannot use the interpreter set in claudeUsage.pythonPath (your PATH was not searched). See the dashboard panel for details."
+    ? "Codex / Claude Usage cannot use the interpreter set in codexClaudeUsage.pythonPath (your PATH was not searched). See the dashboard panel for details."
     : "Codex / Claude Usage needs Python 3.11+ on PATH. See the dashboard panel for install links.";
 }
 

@@ -29,7 +29,7 @@ vi.mock("vscode", () => {
   };
 });
 
-const EXTENSION_DIR = "/Applications/vscode/extensions/claude-usage";
+const EXTENSION_DIR = "/Applications/vscode/extensions/codex-claude-usage";
 
 function fakeExtensionUri() {
   return { scheme: "file", fsPath: EXTENSION_DIR, toString: () => `file://${EXTENSION_DIR}` } as any;
@@ -238,13 +238,13 @@ describe("renderHtml with null URL (status pane)", () => {
 
   it("offers a Retry button (invoking the open command) only when showRetry is set", () => {
     const html = renderHtml(null, "Failed to start dashboard: timed out", NONCE, "", "", true);
-    expect(html).toContain('href="command:claudeUsage.open"');
+    expect(html).toContain('href="command:codexClaudeUsage.open"');
     expect(html).toContain("Retry");
   });
 
   it("does NOT show the Retry button during normal startup (showRetry defaults false)", () => {
     const html = renderHtml(null, "Starting dashboard at http://127.0.0.1:8080/…", NONCE);
-    expect(html).not.toContain("command:claudeUsage.open");
+    expect(html).not.toContain("command:codexClaudeUsage.open");
     expect(html).not.toContain("Retry");
   });
 
@@ -289,7 +289,7 @@ describe("DashboardSidebar onShow auto-start", () => {
     const fakeView = makeFakeView() as any;
     sidebar.resolveWebviewView(fakeView);
     expect(fakeView.webview.options.enableCommandUris)
-      .toEqual(["claudeUsage.open"]);
+      .toEqual(["codexClaudeUsage.open"]);
   });
 
   it("grants no local resource roots at all when constructed without an extensionUri", () => {
@@ -364,7 +364,7 @@ describe("DashboardSidebar webview resource grants (production extensionUri path
 
   it("still allows only the fixed retry command URI on the production path", () => {
     const view = resolveWithExtensionUri();
-    expect(view.webview.options.enableCommandUris).toEqual(["claudeUsage.open"]);
+    expect(view.webview.options.enableCommandUris).toEqual(["codexClaudeUsage.open"]);
   });
 
   it("resolves the bundled icon through asWebviewUri and renders it", () => {
@@ -412,7 +412,7 @@ describe("DashboardSidebar failure state machine", () => {
     expect(view._html()).toContain("Starting replacement dashboard");
     expect(view._html()).not.toContain("<iframe");
     expect(view._html()).not.toContain("#token=old");
-    expect(view._html()).not.toContain("command:claudeUsage.open");
+    expect(view._html()).not.toContain("command:codexClaudeUsage.open");
   });
 
   it("shows an error and Retry after a previously running dashboard fails", () => {
@@ -420,7 +420,7 @@ describe("DashboardSidebar failure state machine", () => {
     sidebar.setUrl("http://127.0.0.1:9000/#token=old");
     sidebar.setError("Failed to start replacement dashboard");
     expect(view._html()).toContain("Failed to start replacement dashboard");
-    expect(view._html()).toContain('href="command:claudeUsage.open"');
+    expect(view._html()).toContain('href="command:codexClaudeUsage.open"');
     expect(view._html()).not.toContain("<iframe");
     expect(view._html()).not.toContain("#token=old");
   });
@@ -429,7 +429,7 @@ describe("DashboardSidebar failure state machine", () => {
     const { sidebar, view } = attachedSidebar();
     sidebar.setStatus("Starting dashboard at http://127.0.0.1:8080/…");
     expect(view._html()).toContain("Starting dashboard at http://127.0.0.1:8080/…");
-    expect(view._html()).not.toContain("command:claudeUsage.open");
+    expect(view._html()).not.toContain("command:codexClaudeUsage.open");
   });
 
   it("offers Retry once a start attempt has actually failed", () => {
@@ -437,14 +437,14 @@ describe("DashboardSidebar failure state machine", () => {
     sidebar.setStatus("Starting dashboard…");
     sidebar.setError("Failed to start dashboard: timed out");
     expect(view._html()).toContain("Failed to start dashboard: timed out");
-    expect(view._html()).toContain('href="command:claudeUsage.open"');
+    expect(view._html()).toContain('href="command:codexClaudeUsage.open"');
   });
 
   it("withdraws Retry when a later attempt goes back to starting", () => {
     const { sidebar, view } = attachedSidebar();
     sidebar.setError("Failed to start dashboard: timed out");
     sidebar.setStatus("Starting dashboard at http://127.0.0.1:8080/…");
-    expect(view._html()).not.toContain("command:claudeUsage.open");
+    expect(view._html()).not.toContain("command:codexClaudeUsage.open");
     expect(view._html()).not.toContain("Retry");
   });
 
@@ -453,11 +453,11 @@ describe("DashboardSidebar failure state machine", () => {
     sidebar.setError("Failed to start dashboard: timed out");
     sidebar.setUrl("http://127.0.0.1:9000/#token=abc");
     expect(view._html()).toContain('<iframe src="http://127.0.0.1:9000/#token=abc"');
-    expect(view._html()).not.toContain("command:claudeUsage.open");
+    expect(view._html()).not.toContain("command:codexClaudeUsage.open");
   });
 });
 
-// refresh() is the final UI step of the claudeUsage.rescan command and of the
+// refresh() is the final UI step of the codexClaudeUsage.rescan command and of the
 // already-ready branch of openDashboard, and had no test at all: inverting its
 // guard to `if (this.view) return` made every refresh a silent no-op with the
 // suite green. Asserting only "the HTML string changed" would not be enough

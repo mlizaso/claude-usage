@@ -49,7 +49,7 @@ describe("resolveInstallMode", () => {
     // The resolver deliberately has no workspace/PATH inputs. Only a bundled
     // source or explicit user setting is trusted.
     fs.writeFileSync(path.join(tmpDir, "cli.py"), "# untrusted workspace file\n");
-    fs.writeFileSync(path.join(tmpDir, "claude-usage"), "#!/bin/sh\n");
+    fs.writeFileSync(path.join(tmpDir, "codex-claude-usage"), "#!/bin/sh\n");
     expect(resolveInstallMode({ configuredCliPath: "" }))
       .toEqual({ kind: "none", cause: "nothing-found" });
   });

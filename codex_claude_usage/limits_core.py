@@ -80,7 +80,7 @@ DEFAULT_THRESHOLDS = (80,)
 # parent when this writer creates one): it is a settings
 # file rather than a secret, but it is written by a localhost service and there
 # is no reason for any other account to be able to rewrite somebody's alerts.
-THRESHOLDS_ENV = "CLAUDE_USAGE_THRESHOLDS"
+THRESHOLDS_ENV = "CODEX_CLAUDE_USAGE_THRESHOLDS"
 
 # A single process may serve both front ends, and each HTTP server is threaded.
 # This lock avoids taking the more expensive file lock concurrently from sibling
@@ -91,7 +91,7 @@ _THRESHOLD_WRITE_LOCK = threading.RLock()
 def thresholds_path():
     """Where the shared threshold file lives, honouring the usual overrides.
 
-    `CLAUDE_USAGE_THRESHOLDS` first so a test -- or a second install -- can
+    `CODEX_CLAUDE_USAGE_THRESHOLDS` first so a test -- or a second install -- can
     point somewhere else, then `CLAUDE_CONFIG_DIR`, then the default beside the
     database. Resolved on every call rather than cached at import, because the
     tests patch the environment and a module-level constant would freeze the
@@ -144,7 +144,7 @@ def _threshold_file_lock(path=None):
     The JSON file itself is atomically replaced, so locking that inode would be
     ineffective: the next writer opens a different inode. Windows holds a
     stable owner-only sidecar with its advisory byte lock. POSIX locks both that
-    sidecar (for compatibility with older claude-usage processes) and the
+    sidecar (for compatibility with older codex-claude-usage processes) and the
     containing directory (so replacing the sidecar cannot split current
     writers into two lock domains). Native locks are released by the OS if a
     process exits, avoiding stale lock files.

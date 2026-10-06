@@ -10,11 +10,11 @@ Anthropic quota lookup requires explicit opt-in and a credential source.
 | Data | Location / handling |
 |---|---|
 | Claude Code and Codex logs | Read-only JSONL inputs from supported roots |
-| Usage database | `~/.claude/usage.db`, or `CLAUDE_USAGE_DB` |
+| Usage database | `~/.claude/usage.db`, or `CODEX_CLAUDE_USAGE_DB` |
 | Startup snapshots | Beside the chosen database; private copies of dashboard payloads |
 | Imported Docker logs | `<database>.docker-transcripts/`; full JSONL transcripts |
 | Quota cache | Read from local account/transcript metadata; identifying account fields are discarded |
-| Alert settings | `~/.claude/limit-thresholds.json`, or `CLAUDE_USAGE_THRESHOLDS` |
+| Alert settings | `~/.claude/limit-thresholds.json`, or `CODEX_CLAUDE_USAGE_THRESHOLDS` |
 | Dashboard recovery link | Beside the database; contains authentication secrets |
 | CSV exports and screenshots | Wherever you save them; may contain private metadata |
 
@@ -28,7 +28,7 @@ contents, potentially including prompts, responses, commands and credentials.
 POSIX cache permissions restrict access to the current user, but that does
 not make the files safe to share. Cached history persists when a container
 is removed or Docker becomes unavailable. Disable collection with
-`CLAUDE_USAGE_DOCKER=0` before launching if you do not want these copies.
+`CODEX_CLAUDE_USAGE_DOCKER=0` before launching if you do not want these copies.
 
 ## Network access and credentials
 
@@ -37,8 +37,8 @@ URLs contain bearer tokens in fragments. Do not paste those URLs into issues,
 messages, screenshots or shared browser bookmarks.
 
 Live Anthropic quotas are off by default. Enabling them requires
-`CLAUDE_USAGE_LIVE_LIMITS=1` and `CLAUDE_USAGE_OAUTH_TOKEN` or an explicitly
-configured `CLAUDE_USAGE_TOKEN_COMMAND`. The credential is used in an HTTPS
+`CODEX_CLAUDE_USAGE_LIVE_LIMITS=1` and `CODEX_CLAUDE_USAGE_OAUTH_TOKEN` or an explicitly
+configured `CODEX_CLAUDE_USAGE_TOKEN_COMMAND`. The credential is used in an HTTPS
 Authorization header and is kept out of the browser, database and logs.
 See [the limits reference](LIMITS-BACKEND.md#live-limits-optional) for the helper
 script, endpoint override and cache fallback. Installation and explicit
@@ -56,7 +56,7 @@ cache and saved recovery link. Remove alert settings and any exports separately
 if desired. Check custom paths before deleting anything. Original provider logs
 are separate and are never deleted by this tool; scanning them again rebuilds
 derived history. Docker deployment stores its database under
-`~/.local/share/claude-usage-docker` by default.
+`~/.local/share/codex-claude-usage-docker` by default.
 
 Repository ignore rules reduce accidental commits of these files. They do not
 remove files already committed and do not protect copies outside Git.

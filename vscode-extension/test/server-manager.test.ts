@@ -399,7 +399,7 @@ describe("ServerManager", () => {
     // will ever listen on for the whole readiness timeout and then blames the
     // timeout — discarding "spawn ... ENOENT", the only useful diagnosis.
     // Real trigger: a `brew upgrade python` retargeting the symlink between
-    // locatePython() and spawn, a stale claudeUsage.pythonPath, or a disabled
+    // locatePython() and spawn, a stale codexClaudeUsage.pythonPath, or a disabled
     // Windows App Execution Alias (findOnPath skips X_OK there, so it sees a
     // file that spawn cannot execute).
     const mgr = new ServerManager({
@@ -636,9 +636,9 @@ describe("ServerManager", () => {
 
     await mgr.start();
 
-    expect(spawnedEnv?.CLAUDE_USAGE_HEALTH_TOKEN).toBe(healthToken);
-    expect(spawnedEnv?.CLAUDE_USAGE_API_TOKEN).toBe(apiToken);
-    expect(spawnedEnv?.CLAUDE_USAGE_SUPPRESS_AUTH_URL).toBe("1");
+    expect(spawnedEnv?.CODEX_CLAUDE_USAGE_HEALTH_TOKEN).toBe(healthToken);
+    expect(spawnedEnv?.CODEX_CLAUDE_USAGE_API_TOKEN).toBe(apiToken);
+    expect(spawnedEnv?.CODEX_CLAUDE_USAGE_SUPPRESS_AUTH_URL).toBe("1");
     expect(spawnedEnv?.ANTHROPIC_API_KEY).toBeUndefined();
   });
 
@@ -699,7 +699,7 @@ describe("ServerManager", () => {
     const server = http.createServer((req, res) => {
       observedMethod = req.method ?? "";
       observedPath = req.url ?? "";
-      observedToken = req.headers["x-claude-usage-token"] as string | undefined;
+      observedToken = req.headers["x-codex-claude-usage-token"] as string | undefined;
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ new: 1, updated: 0, skipped: 3 }));
     });
@@ -739,9 +739,9 @@ describe("ServerManager", () => {
     let observedChallenge: string | undefined;
     let observedProof: string | undefined;
     const server = http.createServer((req, res) => {
-      observedToken = req.headers["x-claude-usage-token"] as string | undefined;
-      observedChallenge = req.headers["x-claude-usage-rescan-challenge"] as string | undefined;
-      observedProof = req.headers["x-claude-usage-rescan-proof"] as string | undefined;
+      observedToken = req.headers["x-codex-claude-usage-token"] as string | undefined;
+      observedChallenge = req.headers["x-codex-claude-usage-rescan-challenge"] as string | undefined;
+      observedProof = req.headers["x-codex-claude-usage-rescan-proof"] as string | undefined;
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ new: 0, updated: 0, skipped: 0 }));
     });
@@ -769,7 +769,7 @@ describe("ServerManager", () => {
       expect(observedToken).toBeUndefined();
       expect(observedChallenge).toMatch(/^[A-Za-z0-9_-]{32,128}$/);
       expect(observedProof).toBe(createHmac("sha256", healthToken)
-        .update(`claude-usage-rescan\0POST /api/rescan\0${observedChallenge}`, "ascii")
+        .update(`codex-claude-usage-rescan\0POST /api/rescan\0${observedChallenge}`, "ascii")
         .digest("hex"));
     } finally {
       mgr.dispose();
@@ -925,19 +925,19 @@ describe("sanitizedChildEnvironment", () => {
       PYTHONSTARTUP: "/untrusted/startup.py",
       ANTHROPIC_API_KEY: "secret-anthropic",
       GITHUB_TOKEN: "secret-github",
-      CLAUDE_USAGE_DB: "/tmp/redirected.db",
-      CLAUDE_USAGE_DOCKER: "0",
+      CODEX_CLAUDE_USAGE_DB: "/tmp/redirected.db",
+      CODEX_CLAUDE_USAGE_DOCKER: "0",
       DOCKER_HOST: "ssh://unexpected-host",
       DOCKER_CONTEXT: "remote-context",
-      CLAUDE_USAGE_HEALTH_TOKEN: "attacker-controlled",
-      CLAUDE_USAGE_API_TOKEN: "attacker-controlled",
-      CLAUDE_USAGE_SUPPRESS_AUTH_URL: "attacker-controlled",
+      CODEX_CLAUDE_USAGE_HEALTH_TOKEN: "attacker-controlled",
+      CODEX_CLAUDE_USAGE_API_TOKEN: "attacker-controlled",
+      CODEX_CLAUDE_USAGE_SUPPRESS_AUTH_URL: "attacker-controlled",
     })).toEqual({
       HOME: "/Users/test",
       TMPDIR: "/tmp/test",
       LANG: "en_US.UTF-8",
       SystemRoot: "C:\\Windows",
-      CLAUDE_USAGE_DOCKER: "0",
+      CODEX_CLAUDE_USAGE_DOCKER: "0",
     });
   });
 });
@@ -973,13 +973,13 @@ describe("default probe (integration via fake http server)", () => {
       // This is the old replay shape: a listener on the raced port echoes any
       // marker it receives. The fixed probe sends only a nonce, and even a
       // plausible response cannot replace the child's inherited stdout record.
-      observedInstanceHeader = req.headers["x-claude-usage-instance"];
+      observedInstanceHeader = req.headers["x-codex-claude-usage-instance"];
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
-        service: "claude-usage",
+        service: "codex-claude-usage",
         status: "ok",
         version: "1.5.5",
-        instance: req.headers["x-claude-usage-instance"],
+        instance: req.headers["x-codex-claude-usage-instance"],
       }));
     });
     try {
@@ -1009,8 +1009,8 @@ describe("default probe (integration via fake http server)", () => {
     const healthToken = "e".repeat(43);
     const srv = await makeServer((req, res) => {
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ service: "claude-usage", status: "ok",
-        instance: req.headers["x-claude-usage-instance"] }));
+      res.end(JSON.stringify({ service: "codex-claude-usage", status: "ok",
+        instance: req.headers["x-codex-claude-usage-instance"] }));
     });
     try {
       const mgr = new ServerManager({
@@ -1036,10 +1036,10 @@ describe("default probe (integration via fake http server)", () => {
     const srv = await makeServer((req, res) => {
       const challenge = new URL(req.url, "http://127.0.0.1").searchParams.get("challenge");
       const instance = createHmac("sha256", healthToken)
-        .update(`claude-usage-health\0${challenge}`, "ascii")
+        .update(`codex-claude-usage-health\0${challenge}`, "ascii")
         .digest("hex");
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ service: "claude-usage", status: "ok", version: "1.5.5",
+      res.end(JSON.stringify({ service: "codex-claude-usage", status: "ok", version: "1.5.5",
         instance }));
     });
     try {
@@ -1066,7 +1066,7 @@ describe("default probe (integration via fake http server)", () => {
   it("rejects a child record for a different origin", async () => {
     const srv = await makeServer((_req, res) => {
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ service: "claude-usage", status: "ok", version: "1.5.5" }));
+      res.end(JSON.stringify({ service: "codex-claude-usage", status: "ok", version: "1.5.5" }));
     });
     try {
       const mgr = new ServerManager({
@@ -1158,7 +1158,7 @@ describe("default probe (integration via fake http server)", () => {
     // whole suite green, including the test above whose name claimed it.
     const srv = await makeServer((_req, res) => {
       res.writeHead(404, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ service: "claude-usage", status: "ok", version: "1.5.5" }));
+      res.end(JSON.stringify({ service: "codex-claude-usage", status: "ok", version: "1.5.5" }));
     });
     try {
       const mgr = new ServerManager({
@@ -1200,7 +1200,7 @@ describe("default probe (integration via fake http server)", () => {
   it("rejects the marker under a non-JSON content type", async () => {
     const srv = await makeServer((_req, res) => {
       res.writeHead(200, { "Content-Type": "text/plain" });
-      res.end(JSON.stringify({ service: "claude-usage", status: "ok" }));
+      res.end(JSON.stringify({ service: "codex-claude-usage", status: "ok" }));
     });
     try {
       const mgr = new ServerManager({
@@ -1351,7 +1351,7 @@ describe("default probe (integration via fake http server)", () => {
     const srv = await makeServer((_req, res) => {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
-        service: "claude-usage",
+        service: "codex-claude-usage",
         status: "ok",
         padding: "x".repeat(5_000),
       }));

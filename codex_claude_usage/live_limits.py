@@ -5,9 +5,9 @@ unless you turn it on.** Everything else reads files on this machine; the README
 says so, and that stays true by default. Enabling this changes it, which is why
 it takes a deliberate opt-in rather than appearing the moment a token exists.
 
-    export CLAUDE_USAGE_OAUTH_TOKEN="…"     # you supply it
-    export CLAUDE_USAGE_LIVE_LIMITS=1       # and you ask for it
-    claude-usage dashboard
+    export CODEX_CLAUDE_USAGE_OAUTH_TOKEN="…"     # you supply it
+    export CODEX_CLAUDE_USAGE_LIVE_LIMITS=1       # and you ask for it
+    codex-claude-usage dashboard
 
 The cached quota block can stop updating even when other account fields
 change. An explicitly authorized live query can refresh windows missing from
@@ -17,7 +17,7 @@ that cache.
 deliberate.** Claude Code keeps its credential in platform storage, including
 the macOS login Keychain. This module reads a static token only when the user
 sets its environment variable, or runs the explicit command the user places in
-`CLAUDE_USAGE_TOKEN_COMMAND`; the shipped helper merely configures that command.
+`CODEX_CLAUDE_USAGE_TOKEN_COMMAND`; the shipped helper merely configures that command.
 The decision and blast radius therefore stay with the user instead of silently
 granting this process access to another application's credential.
 
@@ -45,17 +45,17 @@ import urllib.request
 
 # Discovered from the Claude Code extension bundle, not documented by Anthropic.
 DEFAULT_ENDPOINT = "https://api.anthropic.com/api/oauth/usage"
-ENDPOINT_ENV = "CLAUDE_USAGE_LIMITS_URL"
-TOKEN_ENV = "CLAUDE_USAGE_OAUTH_TOKEN"
+ENDPOINT_ENV = "CODEX_CLAUDE_USAGE_LIMITS_URL"
+TOKEN_ENV = "CODEX_CLAUDE_USAGE_OAUTH_TOKEN"
 # A user-selected command can supply a current token for each query, avoiding
 # a stale exported credential. Only run a command the user explicitly enabled;
 # never discover or read an operating-system credential store automatically.
-TOKEN_COMMAND_ENV = "CLAUDE_USAGE_TOKEN_COMMAND"
+TOKEN_COMMAND_ENV = "CODEX_CLAUDE_USAGE_TOKEN_COMMAND"
 # The command is a local credential lookup, not a network call. If it has not
 # answered by now it is hung, and hanging the poll behind it is worse than
 # falling back to the cache.
 TOKEN_COMMAND_TIMEOUT = 5
-ENABLE_ENV = "CLAUDE_USAGE_LIVE_LIMITS"
+ENABLE_ENV = "CODEX_CLAUDE_USAGE_LIVE_LIMITS"
 
 # Short: the plan panel polls on a 30-second timer, and a request that outlives
 # its own poll interval is a queue rather than a refresh.
@@ -242,7 +242,7 @@ def _run_fetch_with_deadline(key, operation, timeout):
             _FETCH_IN_FLIGHT = task
             worker = threading.Thread(
                 target=task.run,
-                name="claude-usage-live-limits",
+                name="codex-claude-usage-live-limits",
                 daemon=True,
             )
             worker.start()
@@ -527,7 +527,7 @@ def _stream_token_line(process, deadline, containment=None):
 
     reader = threading.Thread(
         target=reader_main,
-        name="claude-usage-token-reader",
+        name="codex-claude-usage-token-reader",
         daemon=True,
     )
     reader.start()
@@ -686,7 +686,7 @@ def fetch_utilization(env=None, timeout=TIMEOUT_SECONDS, opener=None, runner=Non
     request.add_header("Accept", "application/json")
     # Named so a support engineer reading Anthropic's logs can tell this apart
     # from Claude Code itself; it is a different program with a different cadence.
-    request.add_header("User-Agent", "claude-usage-dashboard/limits")
+    request.add_header("User-Agent", "codex-claude-usage-dashboard/limits")
     open_url = opener or _open_https_without_redirects
 
     def fetch_bytes():

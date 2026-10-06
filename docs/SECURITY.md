@@ -11,7 +11,7 @@ support branch or guaranteed response time.
 Use GitHub's **Security → Advisories → Report a vulnerability** when private
 reporting is enabled for this repository:
 
-[Open a private security report](https://github.com/mlizaso/claude-usage/security/advisories/new)
+[Open a private security report](https://github.com/mlizaso/codex-claude-usage/security/advisories/new)
 
 If that option is unavailable, open a minimal issue asking the maintainer for
 a private reporting channel. Do not include the vulnerability details, exploit,

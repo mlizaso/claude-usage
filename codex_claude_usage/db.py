@@ -26,7 +26,7 @@ from pathlib import Path
 
 from .timestamps import register_timestamp_order
 
-DB_PATH = Path(os.environ.get("CLAUDE_USAGE_DB", Path.home() / ".claude" / "usage.db"))
+DB_PATH = Path(os.environ.get("CODEX_CLAUDE_USAGE_DB", Path.home() / ".claude" / "usage.db"))
 
 # SQLite reserves this header field for exactly this purpose: identifying the
 # application that owns a database file.  ``CUSG`` is deliberately a file
@@ -212,7 +212,7 @@ def get_db(db_path=None):
         # Verify that the pathname SQLite opened is still the inode checked by
         # the descriptor-backed guard before any ownership claim or write.
         _verify_database_path_identity(path, validated_identity)
-        conn._claude_usage_file_identity = validated_identity
+        conn._codex_claude_usage_file_identity = validated_identity
         # Establish ownership before changing persistent connection settings.
         # In particular, WAL is a property of the file, so enabling it before
         # this check mutates an unrelated database even though ``init_db`` later
@@ -239,7 +239,7 @@ def get_db(db_path=None):
             conn.row_factory = sqlite3.Row
             register_timestamp_order(conn)
             _verify_database_path_identity(path, validated_identity)
-            conn._claude_usage_file_identity = validated_identity
+            conn._codex_claude_usage_file_identity = validated_identity
             _establish_database_identity(conn, path)
             secure_db_permissions(path)
         _enable_wal(conn)
@@ -608,7 +608,7 @@ def connect_existing_db(db_path, *, check_same_thread=True,
         check_same_thread=check_same_thread, factory=_GuardedConnection)
     try:
         _verify_database_path_identity(path, validated_identity)
-        conn._claude_usage_file_identity = validated_identity
+        conn._codex_claude_usage_file_identity = validated_identity
     except BaseException:
         conn.close()
         raise
@@ -1119,7 +1119,7 @@ def stored_tables(conn):
 # The application id added after those measurements establishes ownership, not
 # schema compatibility, so it deliberately does not make two schemas coexist.
 # The remedy remains operational: do not run two versions against one database,
-# and give each its own CLAUDE_USAGE_DB if you must. That works for the CLI,
+# and give each its own CODEX_CLAUDE_USAGE_DB if you must. That works for the CLI,
 # Homebrew and Docker
 # and NOT for the VS Code extension, whose `sanitizedChildEnvironment` strips
 # that variable on purpose, so its server always uses ~/.claude/usage.db --
@@ -1184,7 +1184,7 @@ def _announce_rebuild(reasons, db_path):
     shown = reasons[:5]
     more = len(reasons) - len(shown)
     lines = [
-        "claude-usage: this usage database was written by a different version.",
+        "codex-claude-usage: this usage database was written by a different version.",
     ]
     if db_path:
         lines.append(f"  file: {_safe(str(db_path))}")
@@ -1421,7 +1421,7 @@ def _foreign_database_message(present, db_path, application_id=None):
     would drift apart.
 
     The path and the table names are both attacker-influenced -- the path comes
-    from `CLAUDE_USAGE_DB`, the names from whatever file it points at -- so each
+    from `CODEX_CLAUDE_USAGE_DB`, the names from whatever file it points at -- so each
     is escaped HERE, individually. Escaping the assembled message instead would
     fold its own newlines to `\\x0a` and print the whole remedy on one line,
     which is the trap `dashboard.port_in_use_lines` already documents.
@@ -1429,7 +1429,7 @@ def _foreign_database_message(present, db_path, application_id=None):
     from .safetext import terminal_safe as _safe
     if present:
         identity = (
-            "  It holds objects that do not establish claude-usage ownership: "
+            "  It holds objects that do not establish codex-claude-usage ownership: "
             f"{', '.join(_safe(n) for n in list(present)[:5])}.")
     elif application_id not in (None, 0):
         identity = (
@@ -1438,7 +1438,7 @@ def _foreign_database_message(present, db_path, application_id=None):
     else:
         identity = (
             "  It is a non-empty, table-less SQLite file with no "
-            "claude-usage identity.")
+            "codex-claude-usage identity.")
     return "\n".join([
         "Refusing to rebuild a database this tool did not write:",
         f"  file: {_safe(str(db_path)) if db_path else '<unknown path>'}",
@@ -1446,7 +1446,7 @@ def _foreign_database_message(present, db_path, application_id=None):
         "  That is not a usage database from an older version -- it is",
         "  something else, and this tool does not throw away files it",
         "  did not write.",
-        "  Point CLAUDE_USAGE_DB somewhere else, or move that file aside.",
+        "  Point CODEX_CLAUDE_USAGE_DB somewhere else, or move that file aside.",
     ])
 
 
@@ -1730,7 +1730,7 @@ def database_admission(conn, db_path=None):
     # before admission, otherwise coupling reads from the old inode to locks and
     # cache identities for the replacement.
     expected_identity = getattr(
-        conn, "_claude_usage_file_identity", None)
+        conn, "_codex_claude_usage_file_identity", None)
     path = Path(db_path)
     # Validate before creating/opening the adjacent lock file. The validation
     # is repeated after locked ownership establishment below, as it was before

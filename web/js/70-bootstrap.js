@@ -940,7 +940,7 @@ function scheduleAutoRefresh() {
 // gets their OS theme with no JavaScript and therefore no flash of the wrong one.
 // Only an explicit choice sets data-theme, and that attribute has to win in both
 // directions — light on a dark OS and dark on a light one.
-const THEME_KEY = 'claude-usage-theme';
+const THEME_KEY = 'codex-claude-usage-theme';
 
 function systemTheme() {
   return (typeof matchMedia === 'function'
@@ -1006,7 +1006,7 @@ function initTheme() {
 // ── Footer meta ─────────────────────────────────────────────────────────────
 // APP_CONFIG is injected server-side. External links are user-initiated only;
 // the dashboard never performs an automatic internet request.
-const REPO_URL = 'https://github.com/mlizaso/claude-usage';
+const REPO_URL = 'https://github.com/mlizaso/codex-claude-usage';
 
 function appendFooterLink(container, label, href, needsSeparator) {
   if (needsSeparator) container.appendChild(document.createTextNode(' · '));
@@ -1041,7 +1041,7 @@ function pricingNoteHTML(source) {
       + 'the API &mdash; not a bill. Rates for '
       + ESTIMATED_RATE_MODELS.map(m => '<em>' + esc(m) + '</em>').join(' and ')
       + ' are estimates: they appear in the transcripts but on no published price '
-      + 'list. Set <code>CLAUDE_USAGE_RATES</code> to override any of them.';
+      + 'list. Set <code>CODEX_CLAUDE_USAGE_RATES</code> to override any of them.';
   }
   return 'Cost estimates based on Anthropic API pricing '
     + '(<a href="https://claude.com/pricing#api" target="_blank" rel="noopener noreferrer">'
@@ -1503,7 +1503,7 @@ function showDatabaseNotice() {
     + '<pre class="auth-cmd">' + esc(APP_COMMANDS.diagnose) + '</pre>'
     // The remedy names NO path, and that is a correction rather than caution:
     // it used to print `mv ~/.claude/usage.db ...`, which is the wrong file
-    // whenever CLAUDE_USAGE_DB is set — the Dockerfile sets it, and AGENTS.md
+    // whenever CODEX_CLAUDE_USAGE_DB is set — the Dockerfile sets it, and AGENTS.md
     // tells users to set it per version to avoid the two-installs rebuild
     // loop. A reader following that line would have moved a database that was
     // working and still had a broken one. The command above prints the real
@@ -1535,7 +1535,7 @@ function showDatabaseNotice() {
 // it asserted the boot's diagnosis for all of them — "this tab opened the plain
 // address" while the address bar plainly showed `#token=…`. A stale bookmark is
 // in fact the likeliest way to get here: the server mints a fresh token on every
-// start unless CLAUDE_USAGE_API_TOKEN is set. Only the title, the first
+// start unless CODEX_CLAUDE_USAGE_API_TOKEN is set. Only the title, the first
 // paragraph and the button's label differ; the remedy below them recovers the
 // link either way, so it is written once. The default keeps the bare call at the
 // bootstrap — and any future one — meaning what it has always meant.

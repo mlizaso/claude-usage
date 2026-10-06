@@ -226,7 +226,7 @@ class TestHealthSecretProducesNonceScopedProofs(_LocalServer):
     def expected(secret, challenge):
         return hmac.new(
             secret.encode("ascii"),
-            b"claude-usage-health\0" + challenge.encode("ascii"),
+            b"codex-claude-usage-health\0" + challenge.encode("ascii"),
             hashlib.sha256,
         ).hexdigest()
 
@@ -267,7 +267,7 @@ class TestExtensionRescanProofsAreOneShot(_LocalServer):
         challenge = self.challenge if challenge is None else challenge
         return hmac.new(
             self.SECRET.encode("ascii"),
-            b"claude-usage-rescan\0POST /api/rescan\0"
+            b"codex-claude-usage-rescan\0POST /api/rescan\0"
             + challenge.encode("ascii"),
             hashlib.sha256,
         ).hexdigest()
@@ -294,7 +294,7 @@ class TestExtensionRescanProofsAreOneShot(_LocalServer):
     def test_a_wrong_domain_proof_is_not_a_rescan_authority(self):
         wrong = hmac.new(
             self.SECRET.encode("ascii"),
-            b"claude-usage-health\0" + self.challenge.encode("ascii"),
+            b"codex-claude-usage-health\0" + self.challenge.encode("ascii"),
             hashlib.sha256,
         ).hexdigest()
         headers = (
@@ -592,7 +592,7 @@ class TestAssetsResolveInEveryInstalledLayout(unittest.TestCase):
         root = self.tmp / name
         module_dir = root / site_packages
         module_dir.mkdir(parents=True)
-        share = root / "share" / "claude-usage"
+        share = root / "share" / "codex-claude-usage"
         (share / "web").mkdir(parents=True)
         (share / "web" / "index.html").write_text(
             "__APP_CSS__ __APP_JS__", encoding="utf-8")
@@ -666,8 +666,8 @@ class TestAssetsResolveInEveryInstalledLayout(unittest.TestCase):
                 dashboard.load_html_template()
         message = str(raised.exception)
         self.assertIn(str(module_dir / "web"), message)
-        self.assertIn(str(empty_prefix / "share" / "claude-usage" / "web"), message)
-        self.assertIn(str(root / "share" / "claude-usage" / "web"), message)
+        self.assertIn(str(empty_prefix / "share" / "codex-claude-usage" / "web"), message)
+        self.assertIn(str(root / "share" / "codex-claude-usage" / "web"), message)
         self.assertNotIn("packaging step", message)
 
 
@@ -752,7 +752,7 @@ class TestLimitsGoesThroughTheDatabaseGuard(_LocalServer):
         write_expired_window_config(cls.config, cls.reset)
         cls.expected = seed_window_turns(cls.db_path, cls.reset)
         cls._env = mock.patch.dict(os.environ, {
-            "CLAUDE_USAGE_CONFIG": str(cls.config),
+            "CODEX_CLAUDE_USAGE_CONFIG": str(cls.config),
             # Neutralise the developer's own ~/.claude/settings.json: an
             # api-key declaration there would make every window unavailable and
             # quietly vacuum these assertions.
@@ -989,7 +989,7 @@ class TestLimitsEscapesWhatApiDataEscapes(_LocalServer):
         write_hostile_window_config(cls.config, cls.reset)
         seed_window_turns(cls.db_path, cls.reset)
         cls._env = mock.patch.dict(os.environ, {
-            "CLAUDE_USAGE_CONFIG": str(cls.config),
+            "CODEX_CLAUDE_USAGE_CONFIG": str(cls.config),
             "HOME": str(cls.tmp),
             "USERPROFILE": str(cls.tmp),
         })
@@ -1113,7 +1113,7 @@ class TestEveryNonLiteralPayloadWasAlreadyCovered(unittest.TestCase):
         "health":
             "/healthz — VERSION, plus a SHA-256 HMAC rendered as lowercase "
             "hex when the extension's proof secret is configured",
-        "{'service': 'claude-usage', 'proof': _liveness_proof(challenges[0])}":
+        "{'service': 'codex-claude-usage', 'proof': _liveness_proof(challenges[0])}":
             "/api/instance — the challenge is confined by LOCAL_TOKEN_RE and "
             "the only derived string is a SHA-256 HMAC rendered as lowercase "
             "hex; neither recovery secret is included",
@@ -1707,7 +1707,7 @@ class TestOneBadTimestampCannotBlankTheWholePage(unittest.TestCase):
         the stale reset to the first turn at or after it; that turn is in year
         9999, and `first + step` leaves `datetime`'s range.
 
-        `CLAUDE_USAGE_CONFIG` goes in `os.environ`, not only in the `env` this
+        `CODEX_CLAUDE_USAGE_CONFIG` goes in `os.environ`, not only in the `env` this
         function takes: `account.config_path` reads the process environment
         while `env` reaches only `detect_auth_mode`. Passed as an argument alone
         this test read the DEVELOPER'S OWN `~/.claude.json` and asserted against
@@ -1726,7 +1726,7 @@ class TestOneBadTimestampCannotBlankTheWholePage(unittest.TestCase):
         conn.commit()
         config = self.tmp / "claude.json"
         write_expired_window_config(config, reset)
-        env = {"CLAUDE_USAGE_CONFIG": str(config),
+        env = {"CODEX_CLAUDE_USAGE_CONFIG": str(config),
                "HOME": str(self.tmp), "USERPROFILE": str(self.tmp)}
         with mock.patch.dict(os.environ, env):
             for name in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):

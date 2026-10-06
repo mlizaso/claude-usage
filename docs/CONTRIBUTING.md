@@ -12,8 +12,8 @@ packages. Node is needed for JavaScript tests; Chrome or Chromium enables the
 rendered browser checks. The extension CI uses Node 24 and its locked dependencies.
 
 ```bash
-git clone https://github.com/mlizaso/claude-usage.git
-cd claude-usage
+git clone https://github.com/mlizaso/codex-claude-usage.git
+cd codex-claude-usage
 python3 -m unittest discover -s tests -t . -v
 python3 scripts/generate-pricing-assets.py --check
 ```
