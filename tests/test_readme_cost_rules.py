@@ -29,6 +29,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 import reports
 from pricing import ESTIMATED_RATE_MODELS, PRICING
@@ -59,15 +60,77 @@ def _section(name, level="## "):
     including the `## Files` table, whose rows then parsed as rate rows.
     """
     text = README.read_text(encoding="utf-8")
-    start = text.find(level + name)
-    if start == -1:
+    headings = list(re.finditer(r"^%s[ \t]*$" % re.escape(level + name),
+                                text, re.MULTILINE))
+    if not headings:
         raise AssertionError(
             "README.md no longer has a %r section. If it was renamed, update "
             "this test — do not delete it; it is the only guard against the "
             "README's rate table drifting away from pricing.PRICING." % name)
-    body = text.index("\n", start) + 1  # past the heading's own line
+    if len(headings) != 1:
+        raise AssertionError("README.md has multiple %r sections" % name)
+    start = headings[0].start()
+    body = headings[0].end()  # past the heading text, even at end of file
     end = re.search(r"^#{1,%d} " % len(level.strip()), text[body:], re.MULTILINE)
     return text[start:body + end.start()] if end else text[start:]
+
+
+class TestReadmeSectionSelection(unittest.TestCase):
+    """Unrelated README prose must not redirect the cost-rule checks."""
+
+    def _read_section(self, text, name="Codex", level="## "):
+        with tempfile.TemporaryDirectory() as directory:
+            readme = Path(directory) / "README.md"
+            readme.write_text(text, encoding="utf-8")
+            with patch(__name__ + ".README", readme):
+                return _section(name, level)
+
+    def test_a_deeper_heading_does_not_shadow_the_requested_section(self):
+        self.assertEqual(self._read_section(
+            "## Screenshots\n\n### Codex · costs and reasoning tokens\n"
+            "\nScreenshot prose.\n\n## Codex\n\nActual rule.\n"
+            "\n## Next\n\nUnrelated prose.\n"),
+            "## Codex\n\nActual rule.\n\n")
+
+    def test_a_longer_heading_title_does_not_shadow_the_requested_section(self):
+        self.assertEqual(self._read_section(
+            "## Codex examples\n\nScreenshot prose.\n"
+            "\n## Codex\n\nActual rule.\n"),
+            "## Codex\n\nActual rule.\n")
+
+    def test_an_inline_heading_mention_does_not_shadow_the_requested_section(self):
+        self.assertEqual(self._read_section(
+            "Read the `## Codex` section below.\n"
+            "\n## Codex\n\nActual rule.\n"),
+            "## Codex\n\nActual rule.\n")
+
+    def test_heading_titles_are_matched_literally(self):
+        self.assertEqual(self._read_section(
+            "## Cost x\n\nUnrelated prose.\n\n## Cost (x)\t \n\nRule.\n",
+            name="Cost (x)"),
+            "## Cost (x)\t \n\nRule.\n")
+
+    def test_nested_content_stays_until_a_same_or_shallower_heading(self):
+        for next_heading in ("### Next", "## Next", "# Next"):
+            with self.subTest(next_heading=next_heading):
+                expected = "### Rates\n\nRule.\n\n#### Details\n\nMore.\n\n"
+                self.assertEqual(self._read_section(
+                    expected + next_heading + "\n\nUnrelated prose.\n",
+                    name="Rates", level="### "), expected)
+
+    def test_lookalikes_do_not_satisfy_a_missing_section(self):
+        for text in ("### Codex\n", "## Codex examples\n",
+                     "Read about ## Codex\n"):
+            with self.subTest(text=text):
+                with self.assertRaisesRegex(AssertionError, "no longer has"):
+                    self._read_section(text)
+
+    def test_duplicate_exact_headings_are_rejected(self):
+        with self.assertRaisesRegex(AssertionError, "multiple"):
+            self._read_section("## Codex\n\nFirst.\n\n## Codex\n\nSecond.\n")
+
+    def test_a_heading_at_end_of_file_has_an_empty_body(self):
+        self.assertEqual(self._read_section("## Codex"), "## Codex")
 
 
 def _rate_table(section):
