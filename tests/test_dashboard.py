@@ -548,7 +548,7 @@ class TestDashboardHTTP(unittest.TestCase):
         for qs in ("?range=all", "?range=30d&models=claude-opus-4-7"):
             with urllib.request.urlopen(f"http://127.0.0.1:{self.port}/{qs}") as resp:
                 self.assertEqual(resp.status, 200)
-                self.assertIn(b"Claude Code Usage", resp.read())
+                self.assertIn(b"Codex / Claude Usage", resp.read())
 
     def test_api_data_with_query_string(self):
         # /api/data is fetched without query parameters today, but the route
@@ -1072,7 +1072,7 @@ class TestDashboardHTTP(unittest.TestCase):
                 self.assertIn("frame-ancestors vscode-webview:",
                               resp.headers["Content-Security-Policy"])
                 body = resp.read().decode("utf-8")
-            self.assertIn("Command Palette: Claude Usage: Rescan Transcripts",
+            self.assertIn("Command Palette: Codex / Claude Usage: Rescan Transcripts",
                           body)
             self.assertNotIn('"scan": "python cli.py scan"', body)
         with urllib.request.urlopen(f"http://127.0.0.1:{self.port}/") as resp:
@@ -2657,7 +2657,7 @@ class TestCliRejectsArgumentsItWouldDrop(unittest.TestCase):
             with self.subTest(argv=argv):
                 code, output, _ = self._run(argv)
                 self.assertEqual(code, 0)
-                self.assertIn("Claude Code Usage Dashboard", output)
+                self.assertIn("Codex / Claude Usage Dashboard", output)
         code, output, _ = self._run(["--version"])
         self.assertEqual(code, 0)
         self.assertNotIn("Usage:", output)

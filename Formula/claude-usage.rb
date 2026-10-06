@@ -1,5 +1,5 @@
 class ClaudeUsage < Formula
-  desc "Token, cost, and session dashboard for Claude Code and Codex"
+  desc "Codex / Claude Usage dashboard for tokens, costs, and sessions"
   homepage "https://github.com/mlizaso/claude-usage"
   license "MIT"
   # Head-only by design: a stable formula embedded in its own source archive
@@ -80,7 +80,7 @@ class ClaudeUsage < Formula
   test do
     # 1. No-args invocation prints the usage banner — exercises the shim.
     output = shell_output("#{bin}/claude-usage")
-    assert_match "Claude Code Usage Dashboard", output
+    assert_match "Codex / Claude Usage Dashboard", output
     assert_match "scan", output
     assert_match "dashboard", output
 

@@ -400,7 +400,7 @@ describe("extension startup wiring", () => {
     await startup();
 
     expect(lastCall("setStatus")?.arg).toBe(noPythonMessage({ kind: "not-on-path" }));
-    expect(String(hooks.errorMessages[0]?.[0])).toContain("Claude Usage needs Python 3.11+ on PATH");
+    expect(String(hooks.errorMessages[0]?.[0])).toContain("Codex / Claude Usage needs Python 3.11+ on PATH");
     expect(hooks.serverOptions).toHaveLength(0);
   });
 

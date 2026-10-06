@@ -48,7 +48,7 @@ DOCUMENT_MARKERS = {
     "THIRD-PARTY-NOTICES.md": ("# Third-party notices",),
     "PUBLICATION.md": ("# Preparing a public repository",),
     "README.md": (
-        "# Claude Code and Codex Usage Dashboard",
+        "# Codex / Claude Usage",
         "## Documentation",
     ),
     "AGENTS.md": (
@@ -82,7 +82,7 @@ DOCUMENT_MARKERS = {
         "open backlog.",
     ),
     "VS-CODE-EXTENSION.md": (
-        "# Claude Code and Codex Usage — VS Code extension",
+        "# Codex / Claude Usage — VS Code extension",
         "It makes no external API calls and sends no telemetry",
     ),
 }

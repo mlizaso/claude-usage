@@ -1,4 +1,4 @@
-# Claude Code and Codex Usage Dashboard
+# Codex / Claude Usage
 
 A local dashboard and command-line tool for **Claude Code and Codex** usage.
 Explore tokens, API-equivalent cost estimates, models, projects, sessions,

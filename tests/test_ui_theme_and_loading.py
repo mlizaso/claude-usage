@@ -783,15 +783,11 @@ class TestTheQuotaPanelStatesTheAgeOfTheReadingItIsShowing(unittest.TestCase):
 
 @requires_node
 class TestTheTitleNamesTheAssistantItIsShowing(unittest.TestCase):
-    """The heading branched on HOW MANY assistants exist, not on WHICH one.
+    """The project brand must always retain the selected assistant's scope.
 
-    With two, it named the selected one; with one, it said "Claude Code Usage"
-    unconditionally — so a machine that runs Codex and not Claude Code read
-    Anthropic's product name over OpenAI-priced figures, beside a footer citing
-    OpenAI's rate card, with the source switch hidden because there is nothing to
-    switch to. `reports.py` has always named the source it is printing for the
-    CLI; this is the same rule on the page. A Claude-only machine is unaffected:
-    SOURCE_LABELS.claude *is* "Claude Code".
+    This includes single-source installs and startup before data arrives. The
+    fixed brand names both assistants, so exact source suffixes are essential:
+    checking only for the word "Codex" would pass on a Claude-selected view.
     """
 
     PROBE = """
@@ -814,16 +810,16 @@ class TestTheTitleNamesTheAssistantItIsShowing(unittest.TestCase):
                            "         role: seen.role || null,"
                            "         switchTo: heading.dataset.switchTo || null }; })()"))
 
-    def test_a_codex_only_machine_is_not_told_it_is_running_claude_code(self):
+    def test_a_codex_only_machine_names_codex_as_the_selected_assistant(self):
         got = self._title(["codex"], "codex")
-        self.assertEqual(got["h1"], "Codex Usage")
-        self.assertEqual(got["doc"], "Codex Usage Dashboard",
+        self.assertEqual(got["h1"], "Codex / Claude Usage · Codex")
+        self.assertEqual(got["doc"], "Codex / Claude Usage Dashboard — Codex",
                          "the browser tab names the vendor too")
 
-    def test_a_claude_only_machine_reads_exactly_as_before(self):
+    def test_a_claude_only_machine_names_claude_code_as_the_selected_assistant(self):
         got = self._title(["claude"], "claude")
-        self.assertEqual(got["h1"], "Claude Code Usage")
-        self.assertEqual(got["doc"], "Claude Code Usage Dashboard")
+        self.assertEqual(got["h1"], "Codex / Claude Usage · Claude Code")
+        self.assertEqual(got["doc"], "Codex / Claude Usage Dashboard — Claude Code")
 
     def test_a_single_source_title_is_still_not_a_control(self):
         """Naming the source is not the same as offering a choice: with one
@@ -836,7 +832,7 @@ class TestTheTitleNamesTheAssistantItIsShowing(unittest.TestCase):
 
     def test_two_sources_still_name_the_selected_one_and_offer_the_other(self):
         got = self._title(["claude", "codex"], "codex")
-        self.assertEqual(got["h1"], "Codex Usage")
+        self.assertEqual(got["h1"], "Codex / Claude Usage · Codex")
         self.assertTrue(got["switchable"])
         self.assertEqual(got["switchTo"], "claude")
 
@@ -873,7 +869,7 @@ class TestTheTitleNamesTheAssistantItIsShowing(unittest.TestCase):
             "                               loading: loadText.textContent }));\n"
             "})();")
         self.assertIn("Codex", got["loading"], "the overlay named the source already")
-        self.assertEqual(got["h1"], "Codex Usage",
+        self.assertEqual(got["h1"], "Codex / Claude Usage · Codex",
                          "the heading spent the whole fetch naming the other vendor")
         self.assertIn("openai.com", got["footer"])
         self.assertNotIn("claude.com", got["footer"])
@@ -1597,7 +1593,7 @@ class TestTheQuotaCardsReadTrueOnEitherAssistant(unittest.TestCase):
     def test_the_rate_limit_copy_is_not_also_frozen_into_the_markup(self):
         """The renderer owns it now. A second copy in `index.html` is the one
         that gets left behind — which is exactly how this card came to name
-        Claude Code on a page titled "Codex Usage" in the first place."""
+        Claude Code on a page titled "Codex / Claude Usage · Codex" in the first place."""
         for element, pattern in (
                 ("the Rate Limits tooltip",
                  r'aria-label="About rate limits" title="([^"]*)"'),

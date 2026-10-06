@@ -91,7 +91,7 @@ describe("escapeHtml", () => {
   });
 
   it("passes through safe text unchanged", () => {
-    expect(escapeHtml("Claude Usage Dashboard")).toBe("Claude Usage Dashboard");
+    expect(escapeHtml("Codex / Claude Usage Dashboard")).toBe("Codex / Claude Usage Dashboard");
   });
 
   it("handles empty input", () => {
@@ -215,7 +215,7 @@ describe("renderHtml with null URL (status pane)", () => {
 
   it("renders the placeholder when no URL is set", () => {
     const html = renderHtml(null, "", NONCE);
-    expect(html).toContain("Claude Code Usage");
+    expect(html).toContain("Codex / Claude Usage");
     expect(html).toContain("not running yet");
     expect(html).not.toContain("<iframe");
   });

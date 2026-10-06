@@ -36,7 +36,7 @@ from .db import (
 )
 
 if sys.version_info < (3, 11):
-    raise RuntimeError("Claude Usage requires Python 3.11 or newer.")
+    raise RuntimeError("Codex / Claude Usage requires Python 3.11 or newer.")
 
 # Single source of truth for the app version reported by the CLI (`--version`)
 # and the dashboard footer. docs/CHANGELOG.md is the canonical version reference, but

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install the Claude Usage VS Code extension on macOS / Linux / WSL.
+# Install the Codex / Claude Usage VS Code extension on macOS / Linux / WSL.
 # Usage:  ./scripts/install.sh [path/to/file.vsix]
 # With no argument, always builds the exact reviewed checkout before installing.
 
@@ -66,4 +66,4 @@ fi
 
 echo "Installing $vsix via $code_cli ..."
 "$code_cli" --install-extension "$vsix" --force
-echo "Done. Reload VS Code (Cmd+Shift+P → Reload Window) to see the Claude Usage sidebar."
+echo "Done. Reload VS Code (Cmd+Shift+P → Reload Window) to see the Codex / Claude Usage sidebar."

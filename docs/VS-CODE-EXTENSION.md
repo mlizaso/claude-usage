@@ -1,4 +1,4 @@
-# Claude Code and Codex Usage — VS Code extension
+# Codex / Claude Usage — VS Code extension
 
 **See local Claude Code and Codex usage — tokens, costs, sessions, and projects — inside VS Code.**
 
@@ -119,10 +119,10 @@ Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`):
 
 | Command | What it does |
 |---|---|
-| **Claude Usage: Open Dashboard** | Reveal the sidebar and start the server (also fires automatically when you click the activity-bar icon) |
-| **Claude Usage: Rescan Transcripts** | Revalidate the owned child and its authenticated health proof, then send a one-shot HMAC-authorized request to the extension-owned dashboard server to ingest new or changed transcripts; the reusable browser bearer is never sent by this host-driven command. Reload the panel after the scan succeeds. A matching-schema scan is incremental. After an upgrade changes the declared schema, the endpoint rebuilds the derived database and refills it from every configured/default transcript root; on a large history that can take minutes. Failures (including an already-running scan) are reported without reloading stale data. |
-| **Claude Usage: Restart Server** | Kill and respawn the Python process (use after changing settings) |
-| **Claude Usage: Show Logs** | Open the extension's output channel — useful when something doesn't work |
+| **Codex / Claude Usage: Open Dashboard** | Reveal the sidebar and start the server (also fires automatically when you click the activity-bar icon) |
+| **Codex / Claude Usage: Rescan Transcripts** | Revalidate the owned child and its authenticated health proof, then send a one-shot HMAC-authorized request to the extension-owned dashboard server to ingest new or changed transcripts; the reusable browser bearer is never sent by this host-driven command. Reload the panel after the scan succeeds. A matching-schema scan is incremental. After an upgrade changes the declared schema, the endpoint rebuilds the derived database and refills it from every configured/default transcript root; on a large history that can take minutes. Failures (including an already-running scan) are reported without reloading stale data. |
+| **Codex / Claude Usage: Restart Server** | Kill and respawn the Python process (use after changing settings) |
+| **Codex / Claude Usage: Show Logs** | Open the extension's output channel — useful when something doesn't work |
 
 ### Settings
 
@@ -209,7 +209,7 @@ hard total deadlines.
 
 - **"Python 3.11 or newer required"** — install from [python.org](https://www.python.org/downloads/) and reload VS Code (`Ctrl+Shift+P` → `Developer: Reload Window`). On Windows make sure "Add Python to PATH" is checked in the installer.
 - **…but Python *is* installed and on your `PATH`** — check `claudeUsage.pythonPath`. A non-empty setting is the only interpreter considered, so if the path you named has moved, been upgraded away, or lost its execute bit, nothing on your `PATH` is looked at. The panel says so explicitly in that case, naming the setting and the path it points at, so the wording above about needing Python on your `PATH` now only ever means the setting is empty. Clear the setting to fall back to auto-discovery, or point it at the new location, then reload the window.
-- **Sidebar stays blank or shows "starting…"** — run `Claude Usage: Show Logs`. The extension logs the resolved Python path, the install mode, the spawn command, and any stdout/stderr from the server.
+- **Sidebar stays blank or shows "starting…"** — run `Codex / Claude Usage: Show Logs`. The extension logs the resolved Python path, the install mode, the spawn command, and any stdout/stderr from the server.
 - **Dashboard renders but shows "No usage recorded"** — neither Claude Code nor
   Codex has written a supported local transcript yet. Run a session in the
   source you expect, then rescan.

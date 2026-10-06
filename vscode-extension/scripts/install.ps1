@@ -1,4 +1,4 @@
-# Install the Claude Usage VS Code extension on Windows.
+# Install the Codex / Claude Usage VS Code extension on Windows.
 # Usage:  .\scripts\install.ps1 [path\to\file.vsix]
 # With no argument, always builds the exact reviewed checkout before installing.
 
@@ -102,4 +102,4 @@ try {
 Write-Output "Installing $Vsix via $CodeCli ..."
 & $CodeCli --install-extension $Vsix --force
 Assert-NativeSuccess "Extension installation"
-Write-Output "Done. Reload VS Code (Ctrl+Shift+P -> Reload Window) to see the Claude Usage sidebar."
+Write-Output "Done. Reload VS Code (Ctrl+Shift+P -> Reload Window) to see the Codex / Claude Usage sidebar."

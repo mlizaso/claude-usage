@@ -38,7 +38,7 @@ class Extension {
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
-    this.output = vscode.window.createOutputChannel("Claude Usage");
+    this.output = vscode.window.createOutputChannel("Codex / Claude Usage");
     // The sidebar invokes onShow when VS Code reveals the webview — that's
     // when the user clicked the activity-bar icon, so it's the right moment
     // to spawn the server. openDashboard() coalesces repeat calls.
@@ -346,7 +346,7 @@ function startupFailureMessage(err: unknown): string {
 export function noInstallMessage(reason: InstallFailure): string {
   if (reason.cause === "configured-unusable") {
     return [
-      "Claude Usage cannot use the launcher named by your claudeUsage.cliPath setting:",
+      "Codex / Claude Usage cannot use the launcher named by your claudeUsage.cliPath setting:",
       "",
       `    ${reason.configuredPath}`,
       "",
@@ -354,18 +354,18 @@ export function noInstallMessage(reason: InstallFailure): string {
       "The copy bundled in this extension is missing too, so there is nothing left to run: correct the",
       "setting, or clear it and reinstall the extension to restore the bundled copy.",
       "",
-      "Use Claude Usage: Show Logs to see what was tried.",
+      "Use Codex / Claude Usage: Show Logs to see what was tried.",
     ].join("\n");
   }
   // Nothing to blame the user for: claudeUsage.cliPath is empty (that is what
   // this arm MEANS), so the bundled python/cli.py that ships inside the .vsix
   // is simply not there.
   return [
-    "Could not find the claude-usage sources bundled in this private extension.",
+    "Could not find the Codex / Claude Usage sources bundled in this private extension.",
     "Your claudeUsage.cliPath setting is empty, so this is not a settings problem —",
     "the bundled python/cli.py is missing. Reinstalling the extension restores it.",
     "",
-    "Use Claude Usage: Show Logs to see what was tried.",
+    "Use Codex / Claude Usage: Show Logs to see what was tried.",
   ].join("\n");
 }
 
@@ -380,7 +380,7 @@ export function noInstallMessage(reason: InstallFailure): string {
  */
 export function ignoredCliPathMessage(configuredPath: string, cliPy: string): string {
   return [
-    "Claude Usage ignored your claudeUsage.cliPath setting — it is not an absolute path to an existing file, or to a directory that contains cli.py:",
+    "Codex / Claude Usage ignored your claudeUsage.cliPath setting — it is not an absolute path to an existing file, or to a directory that contains cli.py:",
     "",
     `    ${configuredPath}`,
     "",
@@ -396,7 +396,7 @@ export function ignoredCliPathMessage(configuredPath: string, cliPy: string): st
  * the same moment and must not describe different causes.
  */
 export function ignoredCliPathDialogMessage(configuredPath: string): string {
-  return `Claude Usage ignored claudeUsage.cliPath (${configuredPath}) and started its own bundled cli.py instead. Run Claude Usage: Show Logs for details.`;
+  return `Codex / Claude Usage ignored claudeUsage.cliPath (${configuredPath}) and started its own bundled cli.py instead. Run Codex / Claude Usage: Show Logs for details.`;
 }
 
 /**
@@ -419,7 +419,7 @@ export function noPythonMessage(
 ): string {
   if (reason.kind === "configured-unusable") {
     return [
-      "Claude Usage cannot use the Python interpreter named by your claudeUsage.pythonPath setting:",
+      "Codex / Claude Usage cannot use the Python interpreter named by your claudeUsage.pythonPath setting:",
       "",
       `    ${reason.configuredPath}`,
       "",
@@ -438,7 +438,7 @@ export function noPythonMessage(
       ? "Install Python 3.11+ with: brew install python  (or from https://www.python.org/downloads/macos/)."
       : "Install Python 3.11+ via your distro's package manager (e.g. apt install python3).";
   return [
-    "Claude Usage needs Python 3.11 or newer on your PATH.",
+    "Codex / Claude Usage needs Python 3.11 or newer on your PATH.",
     "",
     installHint,
     "",
@@ -458,8 +458,8 @@ export function noPythonMessage(
  */
 export function noPythonDialogMessage(reason: PythonFailure): string {
   return reason.kind === "configured-unusable"
-    ? "Claude Usage cannot use the interpreter set in claudeUsage.pythonPath (your PATH was not searched). See the dashboard panel for details."
-    : "Claude Usage needs Python 3.11+ on PATH. See the dashboard panel for install links.";
+    ? "Codex / Claude Usage cannot use the interpreter set in claudeUsage.pythonPath (your PATH was not searched). See the dashboard panel for details."
+    : "Codex / Claude Usage needs Python 3.11+ on PATH. See the dashboard panel for install links.";
 }
 
 let extension: Extension | undefined;

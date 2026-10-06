@@ -1,5 +1,5 @@
 """
-cli.py - Command-line interface for the Claude Code usage dashboard.
+cli.py - Command-line interface for the Codex / Claude Usage dashboard.
 
 `USAGE` below is the one prose copy of the command list; running with no
 arguments (or `-h`) prints it. There was a second list here and it named four of
@@ -610,7 +610,7 @@ def cmd_dashboard(projects_dirs=None, host=None, port=None, no_browser=False, su
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 USAGE = """
-Claude Code Usage Dashboard
+Codex / Claude Usage Dashboard
 
 Usage:
   python cli.py scan [--projects-dir PATH ...]

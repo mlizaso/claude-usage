@@ -1120,7 +1120,8 @@ class TestTheServerRefusesWhatItShould(_Thresholds):
         self.assertTrue(headers["Content-Type"].startswith("text/html"))
         self.assertEqual(headers["Cache-Control"], "no-store")
         text_body = raw.decode("utf-8")
-        self.assertIn("Claude Usage Limits", text_body)
+        self.assertIn("Codex / Claude Usage", text_body)
+        self.assertIn("Claude Code quota monitor", text_body)
         self.assertNotIn(self.info["token"], text_body)
         self.assertNotIn("__CSP_NONCE__", text_body)
         self.assertNotIn("__LIMITS_JS__", text_body)
@@ -1141,7 +1142,7 @@ class TestTheServerRefusesWhatItShould(_Thresholds):
     def test_index_html_is_the_same_public_shell(self):
         status, _, body = self.page_response("/index.html")
         self.assertEqual(status, 200)
-        self.assertIn(b"Claude Usage Limits", body)
+        self.assertIn(b"Codex / Claude Usage", body)
 
     def test_the_page_refuses_a_foreign_host_too(self):
         self.assertEqual(self.page_response(host="evil.example")[0], 421)

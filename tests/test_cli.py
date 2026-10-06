@@ -476,7 +476,7 @@ class TestPerCommandHelpIsAnswered(unittest.TestCase):
                 with self.subTest(command=command, flag=flag):
                     code, out = self._run([command, flag])
                     self.assertEqual(code, 0, f"{command} {flag} exited {code}")
-                    self.assertIn("Claude Code Usage Dashboard", out)
+                    self.assertIn("Codex / Claude Usage Dashboard", out)
 
     def test_an_unknown_argument_is_still_rejected(self):
         for argv in (["today", "--sourcex", "codex"], ["scan", "--bogus"],
@@ -549,7 +549,7 @@ class TestAHelpWordGivenAsAValueIsAValue(unittest.TestCase):
             with self.subTest(argv=argv):
                 run = run_cli(argv)
                 self.assertEqual(run.code, 0, run.out + run.err)
-                self.assertIn("Claude Code Usage Dashboard", run.out)
+                self.assertIn("Codex / Claude Usage Dashboard", run.out)
                 self.assertEqual(run.calls, [], "the command ran anyway")
 
 

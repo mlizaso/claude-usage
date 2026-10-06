@@ -1,7 +1,7 @@
 {
   "name": "claude-usage",
   "private": true,
-  "displayName": "Claude Code and Codex Usage",
+  "displayName": "Codex / Claude Usage",
   "description": "Explore local Claude Code and Codex tokens, costs and sessions, including logs collected from local Docker containers. No telemetry.",
   "version": "1.7.0",
   "publisher": "mlizaso",
@@ -44,7 +44,7 @@
       "activitybar": [
         {
           "id": "claudeUsageSidebar",
-          "title": "Claude Usage",
+          "title": "Codex / Claude Usage",
           "icon": "resources/icon.svg"
         }
       ]
@@ -61,23 +61,23 @@
     "commands": [
       {
         "command": "claudeUsage.open",
-        "title": "Claude Usage: Open Dashboard"
+        "title": "Codex / Claude Usage: Open Dashboard"
       },
       {
         "command": "claudeUsage.rescan",
-        "title": "Claude Usage: Rescan Transcripts"
+        "title": "Codex / Claude Usage: Rescan Transcripts"
       },
       {
         "command": "claudeUsage.restart",
-        "title": "Claude Usage: Restart Server"
+        "title": "Codex / Claude Usage: Restart Server"
       },
       {
         "command": "claudeUsage.showLogs",
-        "title": "Claude Usage: Show Logs"
+        "title": "Codex / Claude Usage: Show Logs"
       }
     ],
     "configuration": {
-      "title": "Claude Code Usage",
+      "title": "Codex / Claude Usage",
       "properties": {
         "claudeUsage.pythonPath": {
           "type": "string",

@@ -246,18 +246,15 @@ function sourceModels(source) {
   return [...(((rawData && rawData.all_models) || []))];
 }
 
-// The page title names what is on screen. It names the SELECTED source, not the
-// number of them: branching on "how many" put "Claude Code Usage" over a
-// Codex-only machine's figures, beside a footer citing OpenAI's rate card and
-// with the switch hidden because there was nothing to switch to. `dual` still
-// decides whether the title is also a CONTROL — with one assistant there is
-// nowhere for it to go. A Claude-only machine reads the same as before:
-// SOURCE_LABELS.claude is "Claude Code".
+// Keep the selected assistant visible alongside the project name, including
+// single-source installs where the source switch is hidden. With both sources
+// present, the heading also switches between them.
 function renderSourceTitle() {
+  const sourceLabel = SOURCE_LABELS[selectedSource] || selectedSource;
   const heading = document.getElementById('app-title');
   if (heading) {
     const dual = availableSources.length > 1;
-    heading.textContent = (SOURCE_LABELS[selectedSource] || selectedSource) + ' Usage';
+    heading.textContent = 'Codex / Claude Usage · ' + sourceLabel;
     // With both assistants present the title is also the fastest way to swap
     // between them — it is the thing on screen that names the current one, so
     // it is where people reach first.
@@ -275,7 +272,7 @@ function renderSourceTitle() {
       heading.title = '';
     }
   }
-  document.title = (SOURCE_LABELS[selectedSource] || selectedSource) + ' Usage Dashboard';
+  document.title = 'Codex / Claude Usage Dashboard — ' + sourceLabel;
 }
 
 function renderSourceSwitch() {

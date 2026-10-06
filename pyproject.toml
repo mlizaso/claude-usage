@@ -13,7 +13,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "claude-usage"
 dynamic = ["version"]
-description = "Token, cost, and session dashboard for Claude Code and Codex usage"
+description = "Codex / Claude Usage: local token, cost, and session dashboard"
 readme = "docs/README.md"
 requires-python = ">=3.11"
 license = "MIT"

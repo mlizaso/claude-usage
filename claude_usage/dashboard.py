@@ -947,9 +947,9 @@ def _commands_for_page(surface=None):
     selected = surface or SURFACE
     if selected == "vscode":
         return {
-            "scan": "Command Palette: Claude Usage: Rescan Transcripts",
-            "diagnose": "Command Palette: Claude Usage: Show Logs",
-            "reconnect": "Command Palette: Claude Usage: Restart Server",
+            "scan": "Command Palette: Codex / Claude Usage: Rescan Transcripts",
+            "diagnose": "Command Palette: Codex / Claude Usage: Show Logs",
+            "reconnect": "Command Palette: Codex / Claude Usage: Restart Server",
         }
     command = invocation()
     return {
@@ -987,7 +987,7 @@ def find_icon_file():
     Returns the first existing path, or ``None`` so the /icon.svg route can 404
     gracefully. Gracefully is the accurate word and *silently* is the honest
     one: `web/index.html` renders the icon as a `<span class="header-icon"
-    role="img" aria-label="Claude Usage">` painted by a CSS mask, so a missing
+    role="img" aria-label="Codex / Claude Usage">` painted by a CSS mask, so a missing
     icon costs the glyph and keeps the accessible name. (This sentence used to
     promise "the header ``<img>`` then just renders empty alt text", describing
     markup the page has never contained — an `<img>` with an empty `alt` is a

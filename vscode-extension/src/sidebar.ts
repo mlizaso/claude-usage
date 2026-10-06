@@ -33,7 +33,7 @@ export function renderHtml(
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'none'; frame-src http://127.0.0.1:* http://localhost:*; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
-<title>Claude Usage</title>
+<title>Codex / Claude Usage</title>
 <style>
   html, body { margin: 0; padding: 0; height: 100%; background: #161617; }
   iframe { border: 0; width: 100%; height: 100vh; display: block; }
@@ -55,7 +55,7 @@ export function renderHtml(
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'none';${imgSrc} style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
-<title>Claude Usage</title>
+<title>Codex / Claude Usage</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #BFBFBF; background: #161617; padding: 24px; line-height: 1.5; }
   .brand { display: flex; align-items: center; gap: 10px; margin: 0 0 18px; }
@@ -69,10 +69,10 @@ export function renderHtml(
 </style>
 </head>
 <body>
-<div class="brand">${logo}<h1>Claude Code Usage</h1></div>
+<div class="brand">${logo}<h1>Codex / Claude Usage</h1></div>
 <p>${escapeHtml(statusText) || "The dashboard server is not running yet."}</p>
 ${showRetry ? `<p><a class="retry" href="command:claudeUsage.open">&#8635; Retry</a></p>` : ""}
-<p class="hint">Run <code>Claude Usage: Open Dashboard</code> from the command palette.</p>
+<p class="hint">Run <code>Codex / Claude Usage: Open Dashboard</code> from the command palette.</p>
 </body>
 </html>`;
 }
